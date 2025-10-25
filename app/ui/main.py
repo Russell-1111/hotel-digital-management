@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
@@ -22,14 +23,19 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Hotel Digital Management - Front Desk")
-        self.geometry("800x500")
+        self.geometry("900x600")
+        self.minsize(800, 500)
+        logging.getLogger(__name__).info("UI initializing")
+
+        # Apply ttk theme and base styling
+        self._setup_theme()
 
         self.cfg = load_config(Path("config.ini"))
         self.paths = ensure_dirs(self.cfg)
         start_daily_backup_scheduler(self.cfg)
 
         nb = ttk.Notebook(self)
-        nb.pack(fill=tk.BOTH, expand=True)
+        nb.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
         self.ops_frame = ttk.Frame(nb)
         self.res_frame = ttk.Frame(nb)
@@ -49,25 +55,55 @@ class App(tk.Tk):
         self._build_availability()
         self._build_reports()
 
+    def _setup_theme(self):
+        """Configure ttk theme and consistent styling."""
+        style = ttk.Style()
+        # Use a modern theme (available on Windows)
+        available_themes = style.theme_names()
+        if 'vista' in available_themes:
+            style.theme_use('vista')
+        elif 'clam' in available_themes:
+            style.theme_use('clam')
+        
+        # Configure base font (accessible size)
+        default_font = ('Segoe UI', 10)
+        self.option_add('*Font', default_font)
+        
+        # Configure ttk widget styles
+        style.configure('TLabel', font=default_font)
+        style.configure('TButton', font=default_font, padding=4)
+        style.configure('TEntry', font=default_font, padding=4)
+        style.configure('TLabelFrame', font=default_font)
+        style.configure('TLabelFrame.Label', font=('Segoe UI', 10, 'bold'))
+
+    def _show_error(self, title: str, message: str):
+        """Display error dialog with log file reference."""
+        from tkinter import messagebox
+        log_path = Path("logs/app.log").absolute()
+        full_msg = f"{message}\n\nCheck {log_path} for details."
+        logging.getLogger(__name__).error(f"{title}: {message}")
+        messagebox.showerror(title, full_msg)
+
     def _build_ops(self):
-        # Date input
-        row = ttk.Frame(self.ops_frame)
-        row.pack(fill=tk.X, pady=5, padx=8)
-        ttk.Label(row, text="Date (YYYY-MM-DD):").pack(side=tk.LEFT)
+        # Date input with consistent padding
+        row = ttk.Frame(self.ops_frame, padding=8)
+        row.pack(fill=tk.X)
+        ttk.Label(row, text="Date (YYYY-MM-DD):").pack(side=tk.LEFT, padx=(0, 8))
         self.ops_date_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        ttk.Entry(row, textvariable=self.ops_date_var, width=12).pack(side=tk.LEFT, padx=6)
+        self.ops_date_entry = ttk.Entry(row, textvariable=self.ops_date_var, width=14)
+        self.ops_date_entry.pack(side=tk.LEFT, padx=(0, 8))
         ttk.Button(row, text="Refresh", command=self.refresh_ops).pack(side=tk.LEFT)
 
-        # Lists
-        lists = ttk.Frame(self.ops_frame)
-        lists.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-        left = ttk.LabelFrame(lists, text="Today's Check-Ins")
-        right = ttk.LabelFrame(lists, text="Today's Check-Outs")
-        left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0,4))
-        right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(4,0))
+        # Lists with consistent padding
+        lists = ttk.Frame(self.ops_frame, padding=(8, 0, 8, 8))
+        lists.pack(fill=tk.BOTH, expand=True)
+        left = ttk.LabelFrame(lists, text="Today's Check-Ins", padding=8)
+        right = ttk.LabelFrame(lists, text="Today's Check-Outs", padding=8)
+        left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 4))
+        right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(4, 0))
 
-        self.ins_list = tk.Listbox(left)
-        self.outs_list = tk.Listbox(right)
+        self.ins_list = tk.Listbox(left, font=('Segoe UI', 9))
+        self.outs_list = tk.Listbox(right, font=('Segoe UI', 9))
         self.ins_list.pack(fill=tk.BOTH, expand=True)
         self.outs_list.pack(fill=tk.BOTH, expand=True)
 
@@ -77,7 +113,14 @@ class App(tk.Tk):
         date_str = self.ops_date_var.get().strip()
         try:
             datetime.strptime(date_str, '%Y-%m-%d')
+            # Remove validation error styling if present
+            self.ops_date_entry.state(['!invalid'])
         except ValueError:
+            logging.getLogger(__name__).warning(f"Invalid date format in Daily Ops: {date_str}")
+            # Add visual feedback for invalid date
+            self.ops_date_entry.state(['invalid'])
+            self.ops_date_entry.config(foreground='red')
+            self.after(2000, lambda: self.ops_date_entry.config(foreground='black'))
             return
         # Apply automatic status transitions before showing lists
         auto_status_transitions(
@@ -97,54 +140,56 @@ class App(tk.Tk):
 
     # --- Reservations tab ---
     def _build_reservations(self):
-        form = ttk.LabelFrame(self.res_frame, text="New Reservation")
+        form = ttk.LabelFrame(self.res_frame, text="New Reservation", padding=8)
         form.pack(fill=tk.X, padx=8, pady=8)
 
         # Row 1: Guest info
         r1 = ttk.Frame(form)
         r1.pack(fill=tk.X, pady=4)
-        ttk.Label(r1, text="Guest Name").grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(r1, text="Guest Name").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         self.guest_name = tk.StringVar()
-        ttk.Entry(r1, textvariable=self.guest_name, width=24).grid(row=0, column=1, padx=6)
-        ttk.Label(r1, text="Phone").grid(row=0, column=2, sticky=tk.W)
+        ttk.Entry(r1, textvariable=self.guest_name, width=24).grid(row=0, column=1, padx=(0, 8))
+        ttk.Label(r1, text="Phone").grid(row=0, column=2, sticky=tk.W, padx=(8, 8))
         self.guest_phone = tk.StringVar()
-        ttk.Entry(r1, textvariable=self.guest_phone, width=16).grid(row=0, column=3, padx=6)
-        ttk.Label(r1, text="Email").grid(row=0, column=4, sticky=tk.W)
+        ttk.Entry(r1, textvariable=self.guest_phone, width=16).grid(row=0, column=3, padx=(0, 8))
+        ttk.Label(r1, text="Email").grid(row=0, column=4, sticky=tk.W, padx=(8, 8))
         self.guest_email = tk.StringVar()
-        ttk.Entry(r1, textvariable=self.guest_email, width=24).grid(row=0, column=5, padx=6)
+        ttk.Entry(r1, textvariable=self.guest_email, width=24).grid(row=0, column=5)
 
         # Row 2: Dates and guests
         r2 = ttk.Frame(form)
         r2.pack(fill=tk.X, pady=4)
-        ttk.Label(r2, text="Check-in (YYYY-MM-DD)").grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(r2, text="Check-in (YYYY-MM-DD)").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         self.ci_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        ttk.Entry(r2, textvariable=self.ci_var, width=12).grid(row=0, column=1, padx=6)
-        ttk.Label(r2, text="Check-out (YYYY-MM-DD)").grid(row=0, column=2, sticky=tk.W)
+        self.ci_entry = ttk.Entry(r2, textvariable=self.ci_var, width=14)
+        self.ci_entry.grid(row=0, column=1, padx=(0, 8))
+        ttk.Label(r2, text="Check-out (YYYY-MM-DD)").grid(row=0, column=2, sticky=tk.W, padx=(8, 8))
         self.co_var = tk.StringVar(value=(datetime.now()).strftime('%Y-%m-%d'))
-        ttk.Entry(r2, textvariable=self.co_var, width=12).grid(row=0, column=3, padx=6)
-        ttk.Label(r2, text="Guests").grid(row=0, column=4, sticky=tk.W)
+        self.co_entry = ttk.Entry(r2, textvariable=self.co_var, width=14)
+        self.co_entry.grid(row=0, column=3, padx=(0, 8))
+        ttk.Label(r2, text="Guests").grid(row=0, column=4, sticky=tk.W, padx=(8, 8))
         self.num_guests = tk.StringVar(value="1")
-        ttk.Entry(r2, textvariable=self.num_guests, width=5).grid(row=0, column=5, padx=6)
+        ttk.Entry(r2, textvariable=self.num_guests, width=6).grid(row=0, column=5)
 
         # Row 3: Room selection
         r3 = ttk.Frame(form)
         r3.pack(fill=tk.X, pady=4)
-        ttk.Label(r3, text="Available Room").grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(r3, text="Available Room").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         self.room_choice = tk.StringVar()
-        self.room_combo = ttk.Combobox(r3, textvariable=self.room_choice, width=20, state="readonly")
-        self.room_combo.grid(row=0, column=1, padx=6)
-        ttk.Button(r3, text="Check Availability", command=self.refresh_available_rooms).grid(row=0, column=2)
-        ttk.Button(r3, text="Create Reservation", command=self.create_reservation_click).grid(row=0, column=3, padx=6)
+        self.room_combo = ttk.Combobox(r3, textvariable=self.room_choice, width=28, state="readonly")
+        self.room_combo.grid(row=0, column=1, padx=(0, 8))
+        ttk.Button(r3, text="Check Availability", command=self.refresh_available_rooms).grid(row=0, column=2, padx=(0, 8))
+        ttk.Button(r3, text="Create Reservation", command=self.create_reservation_click).grid(row=0, column=3)
 
         # Existing reservations list
-        list_frame = ttk.LabelFrame(self.res_frame, text="Existing Reservations")
+        list_frame = ttk.LabelFrame(self.res_frame, text="Existing Reservations", padding=8)
         list_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-        self.res_list = tk.Listbox(list_frame)
+        self.res_list = tk.Listbox(list_frame, font=('Segoe UI', 9))
         self.res_list.pack(fill=tk.BOTH, expand=True)
-        btns = ttk.Frame(self.res_frame)
-        btns.pack(fill=tk.X, padx=8, pady=(0,8))
-        ttk.Button(btns, text="Refresh", command=self.refresh_reservations_list).pack(side=tk.LEFT)
-        ttk.Button(btns, text="Modify Selected", command=self.modify_selected).pack(side=tk.LEFT, padx=6)
+        btns = ttk.Frame(self.res_frame, padding=(8, 0, 8, 8))
+        btns.pack(fill=tk.X)
+        ttk.Button(btns, text="Refresh", command=self.refresh_reservations_list).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(btns, text="Modify Selected", command=self.modify_selected).pack(side=tk.LEFT, padx=(0, 8))
         ttk.Button(btns, text="Cancel Selected", command=self.cancel_selected).pack(side=tk.LEFT)
 
         # Initial population
@@ -160,11 +205,17 @@ class App(tk.Tk):
         # Determine available rooms for the entered date range
         ci = self.ci_var.get().strip()
         co = self.co_var.get().strip()
-        # Basic validation
+        # Basic validation with visual feedback
         try:
             datetime.strptime(ci, '%Y-%m-%d')
             datetime.strptime(co, '%Y-%m-%d')
+            # Clear any validation styling
+            self.ci_entry.config(foreground='black')
+            self.co_entry.config(foreground='black')
         except ValueError:
+            # Show validation error
+            self.ci_entry.config(foreground='red')
+            self.co_entry.config(foreground='red')
             self.room_combo['values'] = []
             self.room_choice.set('')
             return
@@ -182,15 +233,18 @@ class App(tk.Tk):
     def create_reservation_click(self):
         choice = self.room_choice.get()
         if not choice:
+            self._show_error("Validation Error", "Please select an available room.")
             return
         room_id = choice.split()[0]
         room = self.rooms_by_id.get(room_id)
         if not room:
+            self._show_error("Error", f"Room {room_id} not found in inventory.")
             return
         try:
             num_guests = int(self.num_guests.get())
         except ValueError:
-            num_guests = 1
+            self._show_error("Validation Error", "Number of guests must be a valid integer.")
+            return
         try:
             create_reservation(
                 self.cfg,
@@ -203,8 +257,8 @@ class App(tk.Tk):
                 self.co_var.get().strip(),
                 num_guests,
             )
-        except Exception:
-            # Minimal: ignore detailed error UI for now
+        except Exception as e:
+            self._show_error("Reservation Error", f"Failed to create reservation: {str(e)}")
             return
         self.refresh_available_rooms()
         self.refresh_reservations_list()
@@ -219,7 +273,8 @@ class App(tk.Tk):
         rid = text.split('|')[0].strip()
         try:
             cancel_reservation(self.paths.reservations, rid)
-        except Exception:
+        except Exception as e:
+            self._show_error("Cancellation Error", f"Failed to cancel reservation: {str(e)}")
             return
         self.refresh_reservations_list()
         self.refresh_ops()
@@ -352,18 +407,20 @@ class App(tk.Tk):
 
     # --- Availability tab ---
     def _build_availability(self):
-        frm = ttk.Frame(self.avail_frame)
-        frm.pack(fill=tk.X, padx=8, pady=8)
-        ttk.Label(frm, text="Start (YYYY-MM-DD)").grid(row=0, column=0, sticky=tk.W)
+        frm = ttk.Frame(self.avail_frame, padding=8)
+        frm.pack(fill=tk.X)
+        ttk.Label(frm, text="Start (YYYY-MM-DD)").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         self.av_start = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        ttk.Entry(frm, textvariable=self.av_start, width=12).grid(row=0, column=1, padx=6)
-        ttk.Label(frm, text="End (YYYY-MM-DD)").grid(row=0, column=2, sticky=tk.W)
+        ttk.Entry(frm, textvariable=self.av_start, width=14).grid(row=0, column=1, padx=(0, 8))
+        ttk.Label(frm, text="End (YYYY-MM-DD)").grid(row=0, column=2, sticky=tk.W, padx=(8, 8))
         self.av_end = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        ttk.Entry(frm, textvariable=self.av_end, width=12).grid(row=0, column=3, padx=6)
-        ttk.Button(frm, text="Check", command=self.refresh_availability).grid(row=0, column=4, padx=6)
+        ttk.Entry(frm, textvariable=self.av_end, width=14).grid(row=0, column=3, padx=(0, 8))
+        ttk.Button(frm, text="Check", command=self.refresh_availability).grid(row=0, column=4)
 
-        self.av_list = tk.Listbox(self.avail_frame)
-        self.av_list.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0,8))
+        list_container = ttk.Frame(self.avail_frame, padding=(8, 0, 8, 8))
+        list_container.pack(fill=tk.BOTH, expand=True)
+        self.av_list = tk.Listbox(list_container, font=('Segoe UI', 9))
+        self.av_list.pack(fill=tk.BOTH, expand=True)
 
         self.refresh_availability()
 
@@ -383,22 +440,27 @@ class App(tk.Tk):
             self.av_list.insert(tk.END, f"Room {room.room_id} ({room.room_type}) - {status}")
 
     def _build_reports(self):
-        row = ttk.Frame(self.report_frame)
-        row.pack(fill=tk.X, pady=5, padx=8)
-        ttk.Label(row, text="Month (YYYY-MM):").pack(side=tk.LEFT)
+        row = ttk.Frame(self.report_frame, padding=8)
+        row.pack(fill=tk.X)
+        ttk.Label(row, text="Month (YYYY-MM):").pack(side=tk.LEFT, padx=(0, 8))
         self.month_var = tk.StringVar(value=datetime.now().strftime('%Y-%m'))
-        ttk.Entry(row, textvariable=self.month_var, width=8).pack(side=tk.LEFT, padx=6)
+        ttk.Entry(row, textvariable=self.month_var, width=10).pack(side=tk.LEFT, padx=(0, 8))
         ttk.Button(row, text="Compute Revenue", command=self.refresh_revenue).pack(side=tk.LEFT)
 
+        result_frame = ttk.Frame(self.report_frame, padding=8)
+        result_frame.pack(fill=tk.BOTH, expand=True)
         self.revenue_var = tk.StringVar(value="MYR 0.00")
-        ttk.Label(self.report_frame, textvariable=self.revenue_var, font=("Segoe UI", 14, "bold")).pack(pady=10)
+        ttk.Label(result_frame, textvariable=self.revenue_var, font=("Segoe UI", 16, "bold")).pack(pady=20)
 
         self.refresh_revenue()
 
     def refresh_revenue(self):
         ym = self.month_var.get().strip()
-        total = monthly_revenue_summary(self.paths.reservations, ym)
-        self.revenue_var.set(f"MYR {total:.2f}")
+        try:
+            total = monthly_revenue_summary(self.paths.reservations, ym)
+            self.revenue_var.set(f"MYR {total:.2f}")
+        except Exception as e:
+            self._show_error("Revenue Error", f"Failed to compute revenue: {str(e)}")
 
 
 def run():

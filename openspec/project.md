@@ -8,15 +8,15 @@ Hotel Digital Management System for a single boutique hotel (~20 rooms). The sys
 - UI: Tkinter desktop application (Windows)
 - Storage: CSV files (file-based, no external database)
 - Packaging/Distribution: Local Windows installation
-- Logging: Python `logging` module (rotating file logs)
+- Logging: Planned via Python `logging` (structured logs; TBD)
 - Config: INI file (`config.ini`) for simple settings
 
 ## Project Conventions
 
 ### Code Style
 - Naming: `snake_case` for functions/variables, `PascalCase` for classes
-- File naming: `kebab-case.py` per module; group by feature (reservations, rooms, billing, reporting, storage, ui)
-- Formatting: Black; lint with Ruff or Flake8
+- File naming: `snake_case.py` per module; group by feature (reservations, rooms, billing, reporting, storage, ui)
+- Formatting: Black (line length ~100); optional Ruff or Flake8 linting
 - Imports: absolute within package; standard library first, then third-party, then local
 - Functions: target ≤ 50 lines; prefer pure functions for calculations
 - Docstrings: Google-style or reST for public functions; type hints required
@@ -32,7 +32,7 @@ Hotel Digital Management System for a single boutique hotel (~20 rooms). The sys
 	- `ui`: Tkinter screens; calls into services via thin controllers
 - Communication: in-process function calls (no network API)
 - Error handling: central error types; top-level UI error dialog + safe fallbacks
-- Logging: structured text logs with timestamps; one log file per day (rotation)
+- Logging: planned structured logs with timestamps via Python `logging`
 - Configuration: `config.ini` for paths, backup time, and check-in/out times
 
 ### Data Model and Storage

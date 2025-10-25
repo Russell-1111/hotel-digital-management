@@ -106,6 +106,16 @@ Or using the virtual environment:
 
 ### User Interface
 
+The application features a modern Tkinter UI with consistent theming, responsive layout, and clear user feedback.
+
+**UI Highlights:**
+- **Modern Theme**: ttk styling with accessible fonts (Segoe UI, 10pt)
+- **Resizable Window**: Minimum 800×500, default 900×600; key widgets expand with window
+- **Consistent Spacing**: 8px padding throughout for a clean, professional look
+- **Input Validation**: Invalid dates show red text with brief visual feedback
+- **Error Dialogs**: Clear error messages with links to `logs/app.log` for troubleshooting
+- **Responsive Feedback**: Visual cues during operations
+
 The application has four main tabs:
 
 #### 1. Daily Ops
@@ -293,6 +303,13 @@ pip install pytest pytest-cov
 **Problem**: Status not updating
 - **Solution**: Click "Refresh" in Daily Ops to trigger status transitions
 
+### Errors or Unexpected Behavior
+
+**Problem**: Application shows an error dialog or behaves incorrectly
+- **Solution**: Check `logs/app.log` in the application directory for detailed error messages
+- Logs rotate daily and retain 7 days of history
+- Share the log file when reporting issues
+
 ## Configuration Reference
 
 ### Time Formats
@@ -365,9 +382,9 @@ This project is for internal use. All rights reserved.
 
 For issues or questions:
 1. Check this README
-2. Review `openspec/project.md` for technical details
-3. Run tests to validate your environment
-4. Check logs in the application directory
+2. Review logs at `logs/app.log` for detailed error messages (7-day retention)
+3. Review `openspec/project.md` for technical details
+4. Run tests to validate your environment
 
 ## Version History
 
