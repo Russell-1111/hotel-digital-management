@@ -97,7 +97,8 @@ def load_room_image(image_path: str, size: Tuple[int, int]) -> Optional[object]:
         return img
         
     except Exception as e:
-        logging.getLogger(__name__).warning(f"Failed to load image {file_path}: {e}")
+        error_msg = str(e) if str(e) else type(e).__name__
+        logging.getLogger(__name__).warning(f"Failed to load image {file_path}: {error_msg}")
         
         # Try placeholder as fallback
         if file_path != Path("images/rooms/placeholder.png"):
