@@ -1,7 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple, Optional
+import logging
 
 from .storage import read_csv
 
@@ -11,6 +12,7 @@ class Room:
     room_id: str
     room_type: str
     base_price: float
+    image_path: str = ""  # Relative path to room image (e.g., "images/rooms/101.png")
 
 
 def load_rooms(path: Path) -> List[Room]:
@@ -26,9 +28,85 @@ def load_rooms(path: Path) -> List[Room]:
             room_id=str(r.get("room_id", "")).strip(),
             room_type=str(r.get("room_type", "")).strip(),
             base_price=float(r.get("base_price", 0) or 0),
+            image_path=str(r.get("image_path", "")).strip(),
         ))
     return result
 
 
 def index_by_id(rooms: List[Room]) -> Dict[str, Room]:
     return {r.room_id: r for r in rooms}
+
+
+# Image cache to prevent garbage collection of PhotoImage objects
+_image_cache: Dict[str, object] = {}
+
+
+def load_room_image(image_path: str, size: Tuple[int, int]) -> Optional[object]:
+    """
+    Load and resize a room image for display in Tkinter UI.
+    
+    Args:
+        image_path: Relative path to the image file (e.g., "images/rooms/101.png")
+        size: Target size as (width, height) tuple
+    
+    Returns:
+        PhotoImage object ready for Tkinter display, or None if loading fails
+    
+    Note:
+        - Falls back to placeholder.png if image_path is empty or file not found
+        - Caches loaded images to prevent garbage collection
+        - Logs warnings for invalid/missing images
+    """
+    import tkinter as tk
+    from pathlib import Path
+    
+    # Generate cache key
+    cache_key = f"{image_path}_{size[0]}x{size[1]}"
+    
+    # Return cached image if available
+    if cache_key in _image_cache:
+        return _image_cache[cache_key]
+    
+    # Determine actual file path
+    if not image_path or not Path(image_path).exists():
+        if image_path:
+            logging.getLogger(__name__).warning(f"Room image not found: {image_path}, using placeholder")
+        file_path = Path("images/rooms/placeholder.png")
+        if not file_path.exists():
+            logging.getLogger(__name__).error("Placeholder image not found")
+            return None
+    else:
+        file_path = Path(image_path)
+    
+    try:
+        # Load image using PhotoImage (supports PNG, GIF)
+        # Note: PhotoImage doesn't support resizing, so we load at original size
+        # For production, consider using PIL/Pillow for better image handling
+        img = tk.PhotoImage(file=str(file_path))
+        
+        # Subsample to approximate target size (simple downscaling)
+        # Calculate subsample factor based on original vs target dimensions
+        if img.width() > size[0] or img.height() > size[1]:
+            x_factor = max(1, img.width() // size[0])
+            y_factor = max(1, img.height() // size[1])
+            subsample_factor = max(x_factor, y_factor)
+            img = img.subsample(subsample_factor, subsample_factor)
+        
+        # Cache the image
+        _image_cache[cache_key] = img
+        return img
+        
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Failed to load image {file_path}: {e}")
+        
+        # Try placeholder as fallback
+        if file_path != Path("images/rooms/placeholder.png"):
+            return load_room_image("", size)
+        
+        return None
+
+
+def clear_image_cache():
+    """Clear the image cache. Useful when reloading room data."""
+    global _image_cache
+    _image_cache = {}

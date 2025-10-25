@@ -8,7 +8,7 @@ from datetime import datetime
 from app.config import load_config
 from app.storage import ensure_dirs, start_daily_backup_scheduler
 from app.reporting import daily_checkin_list, daily_checkout_list, monthly_revenue_summary
-from app.rooms import load_rooms, index_by_id
+from app.rooms import load_rooms, index_by_id, load_room_image
 from app.reservations import (
     list_reservations,
     create_reservation,
@@ -171,15 +171,21 @@ class App(tk.Tk):
         self.num_guests = tk.StringVar(value="1")
         ttk.Entry(r2, textvariable=self.num_guests, width=6).grid(row=0, column=5)
 
-        # Row 3: Room selection
+        # Row 3: Room selection with image preview
         r3 = ttk.Frame(form)
         r3.pack(fill=tk.X, pady=4)
         ttk.Label(r3, text="Available Room").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         self.room_choice = tk.StringVar()
         self.room_combo = ttk.Combobox(r3, textvariable=self.room_choice, width=28, state="readonly")
         self.room_combo.grid(row=0, column=1, padx=(0, 8))
-        ttk.Button(r3, text="Check Availability", command=self.refresh_available_rooms).grid(row=0, column=2, padx=(0, 8))
-        ttk.Button(r3, text="Create Reservation", command=self.create_reservation_click).grid(row=0, column=3)
+        self.room_combo.bind('<<ComboboxSelected>>', self._on_room_selected)
+        
+        # Room thumbnail image preview
+        self.room_thumbnail_label = ttk.Label(r3, text="")
+        self.room_thumbnail_label.grid(row=0, column=2, padx=(0, 8))
+        
+        ttk.Button(r3, text="Check Availability", command=self.refresh_available_rooms).grid(row=0, column=3, padx=(0, 8))
+        ttk.Button(r3, text="Create Reservation", command=self.create_reservation_click).grid(row=0, column=4)
 
         # Existing reservations list
         list_frame = ttk.LabelFrame(self.res_frame, text="Existing Reservations", padding=8)
@@ -227,8 +233,33 @@ class App(tk.Tk):
         self.room_combo['values'] = avail
         if avail:
             self.room_choice.set(avail[0])
+            self._on_room_selected()  # Update thumbnail for first room
         else:
             self.room_choice.set('')
+            self.room_thumbnail_label.config(image='')
+
+    def _on_room_selected(self, event=None):
+        """Update room thumbnail when a room is selected from the dropdown."""
+        choice = self.room_choice.get()
+        if not choice:
+            self.room_thumbnail_label.config(image='')
+            return
+        
+        # Extract room_id from the choice string (format: "101 (Standard) - MYR 120.00")
+        room_id = choice.split()[0]
+        room = self.rooms_by_id.get(room_id)
+        
+        if room:
+            # Load thumbnail image (80x60 pixels)
+            thumbnail = load_room_image(room.image_path, (80, 60))
+            if thumbnail:
+                self.room_thumbnail_label.config(image=thumbnail)
+                # Keep a reference to prevent garbage collection
+                self.room_thumbnail_label.image = thumbnail
+            else:
+                self.room_thumbnail_label.config(image='')
+        else:
+            self.room_thumbnail_label.config(image='')
 
     def create_reservation_click(self):
         choice = self.room_choice.get()
@@ -417,10 +448,25 @@ class App(tk.Tk):
         ttk.Entry(frm, textvariable=self.av_end, width=14).grid(row=0, column=3, padx=(0, 8))
         ttk.Button(frm, text="Check", command=self.refresh_availability).grid(row=0, column=4)
 
+        # Scrollable container for room availability with images
         list_container = ttk.Frame(self.avail_frame, padding=(8, 0, 8, 8))
         list_container.pack(fill=tk.BOTH, expand=True)
-        self.av_list = tk.Listbox(list_container, font=('Segoe UI', 9))
-        self.av_list.pack(fill=tk.BOTH, expand=True)
+        
+        # Create canvas with scrollbar for scrollable room list
+        canvas = tk.Canvas(list_container, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(list_container, orient="vertical", command=canvas.yview)
+        self.av_scrollable_frame = ttk.Frame(canvas)
+        
+        self.av_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=self.av_scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill=tk.BOTH, expand=True)
+        scrollbar.pack(side="right", fill="y")
 
         self.refresh_availability()
 
@@ -432,12 +478,59 @@ class App(tk.Tk):
             datetime.strptime(end, '%Y-%m-%d')
         except ValueError:
             return
+        
+        # Clear existing room widgets
+        for widget in self.av_scrollable_frame.winfo_children():
+            widget.destroy()
+        
         reservations = list_reservations(self.paths.reservations)
-        self.av_list.delete(0, tk.END)
-        for room in self.rooms:
+        
+        # Create a row for each room with image and status
+        for idx, room in enumerate(self.rooms):
             ok = is_room_available(reservations, room.room_id, start, end)
             status = "Available" if ok else "Unavailable"
-            self.av_list.insert(tk.END, f"Room {room.room_id} ({room.room_type}) - {status}")
+            
+            # Room frame
+            room_frame = ttk.Frame(self.av_scrollable_frame, padding=8)
+            room_frame.pack(fill=tk.X, pady=4)
+            
+            # Load and display room preview image (320x240)
+            preview_img = load_room_image(room.image_path, (320, 240))
+            if preview_img:
+                img_label = ttk.Label(room_frame, image=preview_img)
+                img_label.image = preview_img  # Keep reference
+                img_label.pack(side=tk.LEFT, padx=(0, 12))
+            
+            # Room info text
+            info_frame = ttk.Frame(room_frame)
+            info_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            
+            room_title = ttk.Label(
+                info_frame, 
+                text=f"Room {room.room_id} ({room.room_type})",
+                font=('Segoe UI', 11, 'bold')
+            )
+            room_title.pack(anchor=tk.W)
+            
+            status_label = ttk.Label(
+                info_frame,
+                text=f"Status: {status}",
+                font=('Segoe UI', 10),
+                foreground='green' if ok else 'red'
+            )
+            status_label.pack(anchor=tk.W, pady=2)
+            
+            price_label = ttk.Label(
+                info_frame,
+                text=f"Price: MYR {room.base_price:.2f}/night",
+                font=('Segoe UI', 9)
+            )
+            price_label.pack(anchor=tk.W)
+            
+            # Separator line
+            if idx < len(self.rooms) - 1:
+                sep = ttk.Separator(self.av_scrollable_frame, orient='horizontal')
+                sep.pack(fill=tk.X, pady=4)
 
     def _build_reports(self):
         row = ttk.Frame(self.report_frame, padding=8)
