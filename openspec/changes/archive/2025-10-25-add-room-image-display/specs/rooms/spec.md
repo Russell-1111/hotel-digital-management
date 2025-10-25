@@ -1,8 +1,7 @@
-# rooms Specification
+# rooms Specification Deltas
 
-## Purpose
-TBD - created by archiving change add-hotel-core-ops. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
+
 ### Requirement: Room Inventory
 The system SHALL maintain a static inventory of rooms with the following fields:
 - room_id, room_type, base_price, image_path
@@ -20,20 +19,7 @@ The system SHALL maintain a static inventory of rooms with the following fields:
 - **THEN** each Room object SHALL include the image_path value
 - **AND** empty or missing image paths SHALL default to an empty string
 
-### Requirement: Room Status Derivation
-The system SHALL derive a room's status (Available, Reserved, Occupied) from reservations and the current local time.
-
-#### Scenario: Status is Reserved when a confirmed future reservation exists
-- **WHEN** a reservation with status "Confirmed" overlaps the queried date range for a room
-- **THEN** the room status SHALL be reported as "Reserved" for that period
-
-#### Scenario: Status is Occupied during active stay
-- **WHEN** the current time is between the reservation's check-in (≥ 14:00 local) and before check-out time (11:00 local)
-- **THEN** the room status SHALL be reported as "Occupied"
-
-#### Scenario: Status is Available otherwise
-- **WHEN** no overlapping active reservations exist for the given date
-- **THEN** the room status SHALL be reported as "Available"
+## ADDED Requirements
 
 ### Requirement: Room Image Loading
 The system SHALL provide a function to load and resize room images for display in the UI.
@@ -54,4 +40,3 @@ The system SHALL provide a function to load and resize room images for display i
 - **WHEN** a room's image_path points to a file that cannot be loaded as an image
 - **THEN** a placeholder image SHALL be used as fallback
 - **AND** a warning SHALL be logged indicating the invalid image path
-
