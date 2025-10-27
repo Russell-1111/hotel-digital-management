@@ -27,8 +27,8 @@ env/
 Thumbs.db
 desktop.ini
 
-# Application Data (backup but don't commit live data)
-data/
+# Application Data - commit sample rooms.csv, exclude live reservations
+data/reservations.csv
 backups/
 
 # Logs
