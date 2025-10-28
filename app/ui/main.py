@@ -7,7 +7,7 @@ from datetime import datetime
 
 from app.config import load_config
 from app.storage import ensure_dirs, start_daily_backup_scheduler
-from app.reporting import daily_checkin_list, daily_checkout_list, monthly_revenue_summary
+from app.reporting import daily_checkin_list, daily_checkout_list, monthly_revenue_summary, guest_reservation_detail_report, compute_nights
 from app.rooms import load_rooms, index_by_id, load_room_image
 from app.reservations import (
     list_reservations,
@@ -533,19 +533,82 @@ class App(tk.Tk):
                 sep.pack(fill=tk.X, pady=4)
 
     def _build_reports(self):
-        row = ttk.Frame(self.report_frame, padding=8)
+        # Monthly Revenue Summary Section
+        revenue_section = ttk.LabelFrame(self.report_frame, text="Monthly Revenue Summary", padding=8)
+        revenue_section.pack(fill=tk.X, padx=8, pady=8)
+        
+        row = ttk.Frame(revenue_section)
         row.pack(fill=tk.X)
         ttk.Label(row, text="Month (YYYY-MM):").pack(side=tk.LEFT, padx=(0, 8))
         self.month_var = tk.StringVar(value=datetime.now().strftime('%Y-%m'))
         ttk.Entry(row, textvariable=self.month_var, width=10).pack(side=tk.LEFT, padx=(0, 8))
         ttk.Button(row, text="Compute Revenue", command=self.refresh_revenue).pack(side=tk.LEFT)
 
-        result_frame = ttk.Frame(self.report_frame, padding=8)
-        result_frame.pack(fill=tk.BOTH, expand=True)
+        result_frame = ttk.Frame(revenue_section)
+        result_frame.pack(fill=tk.X, pady=8)
         self.revenue_var = tk.StringVar(value="MYR 0.00")
-        ttk.Label(result_frame, textvariable=self.revenue_var, font=("Segoe UI", 16, "bold")).pack(pady=20)
+        ttk.Label(result_frame, textvariable=self.revenue_var, font=("Segoe UI", 16, "bold")).pack()
 
         self.refresh_revenue()
+
+        # Guest Reservation Details Section
+        detail_section = ttk.LabelFrame(self.report_frame, text="Guest Reservation Details", padding=8)
+        detail_section.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+
+        # Date range inputs
+        input_row = ttk.Frame(detail_section)
+        input_row.pack(fill=tk.X, pady=(0, 8))
+        
+        ttk.Label(input_row, text="Start Date (YYYY-MM-DD):").pack(side=tk.LEFT, padx=(0, 8))
+        # Default to first day of current month
+        today = datetime.now()
+        first_day = today.replace(day=1).strftime('%Y-%m-%d')
+        self.start_date_var = tk.StringVar(value=first_day)
+        ttk.Entry(input_row, textvariable=self.start_date_var, width=12).pack(side=tk.LEFT, padx=(0, 16))
+        
+        ttk.Label(input_row, text="End Date (YYYY-MM-DD):").pack(side=tk.LEFT, padx=(0, 8))
+        # Default to last day of current month (approximate with today)
+        last_day = today.strftime('%Y-%m-%d')
+        self.end_date_var = tk.StringVar(value=last_day)
+        ttk.Entry(input_row, textvariable=self.end_date_var, width=12).pack(side=tk.LEFT, padx=(0, 16))
+        
+        ttk.Button(input_row, text="Generate Report", command=self.refresh_guest_detail_report).pack(side=tk.LEFT)
+
+        # Table for results
+        table_frame = ttk.Frame(detail_section)
+        table_frame.pack(fill=tk.BOTH, expand=True)
+
+        columns = ("guest", "room", "checkin", "checkout", "nights", "total")
+        self.detail_tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=10)
+        self.detail_tree.heading("guest", text="Guest Name")
+        self.detail_tree.heading("room", text="Room ID")
+        self.detail_tree.heading("checkin", text="Check-In")
+        self.detail_tree.heading("checkout", text="Check-Out")
+        self.detail_tree.heading("nights", text="Nights")
+        self.detail_tree.heading("total", text="Total Cost (MYR)")
+
+        self.detail_tree.column("guest", width=150)
+        self.detail_tree.column("room", width=80)
+        self.detail_tree.column("checkin", width=100)
+        self.detail_tree.column("checkout", width=100)
+        self.detail_tree.column("nights", width=60)
+        self.detail_tree.column("total", width=120)
+
+        scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.detail_tree.yview)
+        self.detail_tree.configure(yscrollcommand=scrollbar.set)
+        
+        self.detail_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Grand total display
+        total_frame = ttk.Frame(detail_section)
+        total_frame.pack(fill=tk.X, pady=(8, 0))
+        ttk.Label(total_frame, text="Grand Total:", font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT, padx=(0, 8))
+        self.grand_total_var = tk.StringVar(value="MYR 0.00")
+        ttk.Label(total_frame, textvariable=self.grand_total_var, font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT)
+
+        # Initial load
+        self.refresh_guest_detail_report()
 
     def refresh_revenue(self):
         ym = self.month_var.get().strip()
@@ -554,6 +617,39 @@ class App(tk.Tk):
             self.revenue_var.set(f"MYR {total:.2f}")
         except Exception as e:
             self._show_error("Revenue Error", f"Failed to compute revenue: {str(e)}")
+
+    def refresh_guest_detail_report(self):
+        """Generate and display guest reservation detail report."""
+        start = self.start_date_var.get().strip()
+        end = self.end_date_var.get().strip()
+        
+        try:
+            # Clear existing data
+            for item in self.detail_tree.get_children():
+                self.detail_tree.delete(item)
+            
+            # Get filtered reservations
+            reservations = guest_reservation_detail_report(self.paths.reservations, start, end)
+            
+            # Populate table
+            grand_total = 0.0
+            for res in reservations:
+                nights = compute_nights(res.check_in_date, res.check_out_date)
+                self.detail_tree.insert("", tk.END, values=(
+                    res.guest_name,
+                    res.room_id,
+                    res.check_in_date,
+                    res.check_out_date,
+                    nights,
+                    f"{res.total_cost:.2f}"
+                ))
+                grand_total += res.total_cost
+            
+            # Update grand total
+            self.grand_total_var.set(f"MYR {grand_total:.2f}")
+            
+        except Exception as e:
+            self._show_error("Report Error", f"Failed to generate report: {str(e)}")
 
 
 def run():

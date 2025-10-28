@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import datetime
 
-from app.reporting import daily_checkin_list, daily_checkout_list, monthly_revenue_summary
+from app.reporting import daily_checkin_list, daily_checkout_list, monthly_revenue_summary, guest_reservation_detail_report, compute_nights
 from app.reservations import Reservation
 from app.storage import write_csv_atomic
 
@@ -43,3 +43,40 @@ def test_monthly_revenue(tmp_path: Path):
     total = monthly_revenue_summary(path, "2025-10")
     # r1, r2, r3 all check_out in October 2025 => 100 + 200 + 150
     assert total == 450.00
+
+
+def test_compute_nights():
+    nights = compute_nights("2025-10-24", "2025-10-27")
+    assert nights == 3
+    
+    same_day = compute_nights("2025-10-24", "2025-10-24")
+    assert same_day == 0
+
+
+def test_guest_reservation_detail_report(tmp_path: Path):
+    path = seed_reservations(tmp_path)
+    
+    # Test normal case - filter by October 2025
+    results = guest_reservation_detail_report(path, "2025-10-01", "2025-10-31")
+    assert len(results) == 2  # r1 and r2 have check-in in October
+    assert results[0].reservation_id == "r2"  # Sorted by check_in_date: Oct 23 comes first
+    assert results[1].reservation_id == "r1"  # Oct 24 comes second
+    
+    # Test edge case - exact date match
+    exact = guest_reservation_detail_report(path, "2025-10-24", "2025-10-24")
+    assert len(exact) == 1
+    assert exact[0].reservation_id == "r1"
+    
+    # Test empty results - no reservations in this range
+    empty = guest_reservation_detail_report(path, "2025-11-01", "2025-11-30")
+    assert len(empty) == 0
+    
+    # Test multiple rooms - verify all fields present
+    results = guest_reservation_detail_report(path, "2025-09-01", "2025-10-31")
+    assert len(results) == 3  # All three reservations
+    for res in results:
+        assert res.guest_name
+        assert res.room_id
+        assert res.check_in_date
+        assert res.check_out_date
+        assert res.total_cost > 0
