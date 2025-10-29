@@ -1,0 +1,11 @@
+2025-10-28 11:15:25,083 INFO [__main__] Starting Hotel Digital Management UI
+2025-10-28 11:15:25,617 INFO [app.ui.main] UI initializing
+2025-10-28 11:40:23,369 INFO [__main__] Starting Hotel Digital Management UI
+2025-10-28 11:40:23,419 INFO [app.ui.main] UI initializing
+2025-10-28 11:47:06,431 ERROR [app.ui.main] Reservation Error: Failed to create reservation: unconverted data remains: 2
+2025-10-28 18:47:36,072 INFO [__main__] Starting Hotel Digital Management UI
+2025-10-28 18:47:36,425 INFO [app.ui.main] UI initializing
+2025-10-28 18:53:14,136 INFO [__main__] Starting Hotel Digital Management UI
+2025-10-28 18:53:14,189 INFO [app.ui.main] UI initializing
+2025-10-28 19:13:39,418 INFO [__main__] Starting Hotel Digital Management UI
+2025-10-28 19:13:39,469 INFO [app.ui.main] UI initializing

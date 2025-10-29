@@ -46,6 +46,10 @@ python -m venv .venv
 ### 3. Install Dependencies
 
 ```powershell
+# Install application dependencies
+pip install -r requirements.txt
+
+# Install development/testing dependencies
 pip install pytest pytest-cov
 ```
 
@@ -110,9 +114,10 @@ The application features a modern Tkinter UI with consistent theming, responsive
 
 **UI Highlights:**
 - **Modern Theme**: ttk styling with accessible fonts (Segoe UI, 10pt)
+- **Calendar Date Pickers**: All date fields feature interactive calendar dropdowns for easy date selection, reducing manual entry errors
 - **Resizable Window**: Minimum 800×500, default 900×600; key widgets expand with window
 - **Consistent Spacing**: 8px padding throughout for a clean, professional look
-- **Input Validation**: Invalid dates show red text with brief visual feedback
+- **Input Validation**: Invalid date ranges (check-out before check-in) are automatically detected with clear error messages
 - **Error Dialogs**: Clear error messages with links to `logs/app.log` for troubleshooting
 - **Responsive Feedback**: Visual cues during operations
 
@@ -124,7 +129,7 @@ The application has four main tabs:
 - Select any date to view scheduled operations
 
 **How to use:**
-1. Select or enter a date (YYYY-MM-DD format)
+1. Select or enter a date using the calendar dropdown (or type in YYYY-MM-DD format)
 2. Click "Refresh" to update lists
 3. View check-ins and check-outs for that date
 
@@ -135,7 +140,7 @@ The application has four main tabs:
 
 **Create a reservation:**
 1. Enter guest details (name, phone, email)
-2. Select check-in and check-out dates
+2. Select check-in and check-out dates using the calendar dropdown widgets (or type dates in YYYY-MM-DD format)
 3. Enter number of guests
 4. Click "Check Availability" to see available rooms
 5. Select a room from the dropdown
@@ -157,10 +162,9 @@ The application has four main tabs:
 - View all rooms and their status
 
 **How to use:**
-1. Enter start date (YYYY-MM-DD)
-2. Enter end date (YYYY-MM-DD)
-3. Click "Check"
-4. View which rooms are Available or Unavailable
+1. Enter start and end dates using the calendar dropdowns (or type in YYYY-MM-DD format)
+2. Click "Check"
+3. View which rooms are Available or Unavailable
 
 #### 4. Reports
 - Generate monthly revenue summaries

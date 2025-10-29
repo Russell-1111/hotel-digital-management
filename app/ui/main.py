@@ -134,9 +134,9 @@ class App(tk.Tk):
         self.ins_list.delete(0, tk.END)
         self.outs_list.delete(0, tk.END)
         for r in ins:
-            self.ins_list.insert(tk.END, f"{r.reservation_id} | Room {r.room_id} | {r.guest_name}")
+            self.ins_list.insert(tk.END, f"Room {r.room_id} | {r.guest_name}")
         for r in outs:
-            self.outs_list.insert(tk.END, f"{r.reservation_id} | Room {r.room_id} | {r.guest_name}")
+            self.outs_list.insert(tk.END, f"Room {r.room_id} | {r.guest_name}")
 
     # --- Reservations tab ---
     def _build_reservations(self):
@@ -204,8 +204,11 @@ class App(tk.Tk):
 
     def refresh_reservations_list(self):
         self.res_list.delete(0, tk.END)
+        # Store reservation IDs separately for modify/cancel operations
+        self.res_list_ids = []
         for r in list_reservations(self.paths.reservations):
-            self.res_list.insert(tk.END, f"{r.reservation_id} | Room {r.room_id} | {r.guest_name} | {r.check_in_date}->{r.check_out_date} | {r.status} | MYR {r.total_cost:.2f}")
+            self.res_list.insert(tk.END, f"Room {r.room_id} | {r.guest_name} | {r.check_in_date}->{r.check_out_date} | {r.status} | MYR {r.total_cost:.2f}")
+            self.res_list_ids.append(r.reservation_id)
 
     def refresh_available_rooms(self):
         # Determine available rooms for the entered date range
@@ -296,12 +299,12 @@ class App(tk.Tk):
         self.refresh_ops()
 
     def cancel_selected(self):
-        # Expect reservation_id at the start of the list item
+        # Get reservation ID from the parallel list
         sel = self.res_list.curselection()
         if not sel:
             return
-        text = self.res_list.get(sel[0])
-        rid = text.split('|')[0].strip()
+        idx = sel[0]
+        rid = self.res_list_ids[idx]
         try:
             cancel_reservation(self.paths.reservations, rid)
         except Exception as e:
@@ -315,8 +318,8 @@ class App(tk.Tk):
         sel = self.res_list.curselection()
         if not sel:
             return
-        text = self.res_list.get(sel[0])
-        rid = text.split('|')[0].strip()
+        idx = sel[0]
+        rid = self.res_list_ids[idx]
         
         # Find the reservation
         reservations = list_reservations(self.paths.reservations)
