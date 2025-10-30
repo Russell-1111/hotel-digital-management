@@ -1,9 +1,16 @@
 from __future__ import annotations
 import logging
+import sys
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
 from datetime import datetime
+try:
+    # Use the robust subclass that refreshes the popup to avoid arrow glitches
+    from app.ui.fixed_dateentry import FixedDateEntry as DateEntry
+except Exception:
+    # Fallback to standard DateEntry if the subclass cannot be imported for any reason
+    from tkcalendar import DateEntry
 
 from app.config import load_config
 from app.storage import ensure_dirs, start_daily_backup_scheduler
@@ -89,8 +96,8 @@ class App(tk.Tk):
         row = ttk.Frame(self.ops_frame, padding=8)
         row.pack(fill=tk.X)
         ttk.Label(row, text="Date (YYYY-MM-DD):").pack(side=tk.LEFT, padx=(0, 8))
-        self.ops_date_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        self.ops_date_entry = ttk.Entry(row, textvariable=self.ops_date_var, width=14)
+        self.ops_date_entry = DateEntry(row, width=12, date_pattern='yyyy-mm-dd', 
+                                         firstweekday='sunday')
         self.ops_date_entry.pack(side=tk.LEFT, padx=(0, 8))
         ttk.Button(row, text="Refresh", command=self.refresh_ops).pack(side=tk.LEFT)
 
@@ -110,17 +117,14 @@ class App(tk.Tk):
         self.refresh_ops()
 
     def refresh_ops(self):
-        date_str = self.ops_date_var.get().strip()
+        date_str = self.ops_date_entry.get()
         try:
             datetime.strptime(date_str, '%Y-%m-%d')
-            # Remove validation error styling if present
-            self.ops_date_entry.state(['!invalid'])
         except ValueError:
             logging.getLogger(__name__).warning(f"Invalid date format in Daily Ops: {date_str}")
             # Add visual feedback for invalid date
-            self.ops_date_entry.state(['invalid'])
-            self.ops_date_entry.config(foreground='red')
-            self.after(2000, lambda: self.ops_date_entry.config(foreground='black'))
+            self.ops_date_entry.configure(foreground='red')
+            self.after(2000, lambda: self.ops_date_entry.configure(foreground='black'))
             return
         # Apply automatic status transitions before showing lists
         auto_status_transitions(
@@ -160,12 +164,10 @@ class App(tk.Tk):
         r2 = ttk.Frame(form)
         r2.pack(fill=tk.X, pady=4)
         ttk.Label(r2, text="Check-in (YYYY-MM-DD)").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
-        self.ci_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        self.ci_entry = ttk.Entry(r2, textvariable=self.ci_var, width=14)
+        self.ci_entry = DateEntry(r2, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         self.ci_entry.grid(row=0, column=1, padx=(0, 8))
         ttk.Label(r2, text="Check-out (YYYY-MM-DD)").grid(row=0, column=2, sticky=tk.W, padx=(8, 8))
-        self.co_var = tk.StringVar(value=(datetime.now()).strftime('%Y-%m-%d'))
-        self.co_entry = ttk.Entry(r2, textvariable=self.co_var, width=14)
+        self.co_entry = DateEntry(r2, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         self.co_entry.grid(row=0, column=3, padx=(0, 8))
         ttk.Label(r2, text="Guests").grid(row=0, column=4, sticky=tk.W, padx=(8, 8))
         self.num_guests = tk.StringVar(value="1")
@@ -212,19 +214,19 @@ class App(tk.Tk):
 
     def refresh_available_rooms(self):
         # Determine available rooms for the entered date range
-        ci = self.ci_var.get().strip()
-        co = self.co_var.get().strip()
+        ci = self.ci_entry.get()
+        co = self.co_entry.get()
         # Basic validation with visual feedback
         try:
             datetime.strptime(ci, '%Y-%m-%d')
             datetime.strptime(co, '%Y-%m-%d')
             # Clear any validation styling
-            self.ci_entry.config(foreground='black')
-            self.co_entry.config(foreground='black')
+            self.ci_entry.configure(foreground='black')
+            self.co_entry.configure(foreground='black')
         except ValueError:
             # Show validation error
-            self.ci_entry.config(foreground='red')
-            self.co_entry.config(foreground='red')
+            self.ci_entry.configure(foreground='red')
+            self.co_entry.configure(foreground='red')
             self.room_combo['values'] = []
             self.room_choice.set('')
             return
@@ -287,8 +289,8 @@ class App(tk.Tk):
                 self.guest_name.get().strip(),
                 self.guest_phone.get().strip(),
                 self.guest_email.get().strip(),
-                self.ci_var.get().strip(),
-                self.co_var.get().strip(),
+                self.ci_entry.get(),
+                self.co_entry.get(),
                 num_guests,
             )
         except Exception as e:
@@ -351,12 +353,14 @@ class App(tk.Tk):
         ttk.Entry(frm, textvariable=mod_email, width=30).grid(row=2, column=1, pady=4)
 
         ttk.Label(frm, text="Check-in (YYYY-MM-DD)").grid(row=3, column=0, sticky=tk.W, pady=4)
-        mod_ci = tk.StringVar(value=target.check_in_date)
-        ttk.Entry(frm, textvariable=mod_ci, width=30).grid(row=3, column=1, pady=4)
+        mod_ci_entry = DateEntry(frm, width=28, date_pattern='yyyy-mm-dd', firstweekday='sunday')
+        mod_ci_entry.set_date(datetime.strptime(target.check_in_date, '%Y-%m-%d'))
+        mod_ci_entry.grid(row=3, column=1, pady=4)
 
         ttk.Label(frm, text="Check-out (YYYY-MM-DD)").grid(row=4, column=0, sticky=tk.W, pady=4)
-        mod_co = tk.StringVar(value=target.check_out_date)
-        ttk.Entry(frm, textvariable=mod_co, width=30).grid(row=4, column=1, pady=4)
+        mod_co_entry = DateEntry(frm, width=28, date_pattern='yyyy-mm-dd', firstweekday='sunday')
+        mod_co_entry.set_date(datetime.strptime(target.check_out_date, '%Y-%m-%d'))
+        mod_co_entry.grid(row=4, column=1, pady=4)
 
         ttk.Label(frm, text="Number of Guests").grid(row=5, column=0, sticky=tk.W, pady=4)
         mod_guests = tk.StringVar(value=str(target.num_guests))
@@ -369,8 +373,8 @@ class App(tk.Tk):
 
         # Populate available rooms for new dates
         def refresh_mod_rooms():
-            ci = mod_ci.get().strip()
-            co = mod_co.get().strip()
+            ci = mod_ci_entry.get()
+            co = mod_co_entry.get()
             try:
                 datetime.strptime(ci, '%Y-%m-%d')
                 datetime.strptime(co, '%Y-%m-%d')
@@ -402,8 +406,8 @@ class App(tk.Tk):
             new_name = mod_name.get().strip()
             new_phone = mod_phone.get().strip()
             new_email = mod_email.get().strip()
-            new_ci = mod_ci.get().strip()
-            new_co = mod_co.get().strip()
+            new_ci = mod_ci_entry.get()
+            new_co = mod_co_entry.get()
             try:
                 new_guests = int(mod_guests.get())
             except ValueError:
@@ -444,11 +448,11 @@ class App(tk.Tk):
         frm = ttk.Frame(self.avail_frame, padding=8)
         frm.pack(fill=tk.X)
         ttk.Label(frm, text="Start (YYYY-MM-DD)").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
-        self.av_start = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        ttk.Entry(frm, textvariable=self.av_start, width=14).grid(row=0, column=1, padx=(0, 8))
+        self.av_start_entry = DateEntry(frm, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
+        self.av_start_entry.grid(row=0, column=1, padx=(0, 8))
         ttk.Label(frm, text="End (YYYY-MM-DD)").grid(row=0, column=2, sticky=tk.W, padx=(8, 8))
-        self.av_end = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        ttk.Entry(frm, textvariable=self.av_end, width=14).grid(row=0, column=3, padx=(0, 8))
+        self.av_end_entry = DateEntry(frm, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
+        self.av_end_entry.grid(row=0, column=3, padx=(0, 8))
         ttk.Button(frm, text="Check", command=self.refresh_availability).grid(row=0, column=4)
 
         # Scrollable container for room availability with images
@@ -474,8 +478,8 @@ class App(tk.Tk):
         self.refresh_availability()
 
     def refresh_availability(self):
-        start = self.av_start.get().strip()
-        end = self.av_end.get().strip()
+        start = self.av_start_entry.get()
+        end = self.av_end_entry.get()
         try:
             datetime.strptime(start, '%Y-%m-%d')
             datetime.strptime(end, '%Y-%m-%d')
@@ -565,15 +569,14 @@ class App(tk.Tk):
         ttk.Label(input_row, text="Start Date (YYYY-MM-DD):").pack(side=tk.LEFT, padx=(0, 8))
         # Default to first day of current month
         today = datetime.now()
-        first_day = today.replace(day=1).strftime('%Y-%m-%d')
-        self.start_date_var = tk.StringVar(value=first_day)
-        ttk.Entry(input_row, textvariable=self.start_date_var, width=12).pack(side=tk.LEFT, padx=(0, 16))
+        first_day = today.replace(day=1)
+        self.start_date_entry = DateEntry(input_row, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
+        self.start_date_entry.set_date(first_day)
+        self.start_date_entry.pack(side=tk.LEFT, padx=(0, 16))
         
         ttk.Label(input_row, text="End Date (YYYY-MM-DD):").pack(side=tk.LEFT, padx=(0, 8))
-        # Default to last day of current month (approximate with today)
-        last_day = today.strftime('%Y-%m-%d')
-        self.end_date_var = tk.StringVar(value=last_day)
-        ttk.Entry(input_row, textvariable=self.end_date_var, width=12).pack(side=tk.LEFT, padx=(0, 16))
+        self.end_date_entry = DateEntry(input_row, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
+        self.end_date_entry.pack(side=tk.LEFT, padx=(0, 16))
         
         ttk.Button(input_row, text="Generate Report", command=self.refresh_guest_detail_report).pack(side=tk.LEFT)
 
@@ -623,8 +626,8 @@ class App(tk.Tk):
 
     def refresh_guest_detail_report(self):
         """Generate and display guest reservation detail report."""
-        start = self.start_date_var.get().strip()
-        end = self.end_date_var.get().strip()
+        start = self.start_date_entry.get()
+        end = self.end_date_entry.get()
         
         try:
             # Clear existing data

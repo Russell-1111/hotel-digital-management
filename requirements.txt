@@ -1,7 +1,1 @@
-# Hotel Digital Management System Dependencies
-
-# Date picker widget for Tkinter
-tkcalendar>=1.6.1
-
-# Image handling (for room images)
-Pillow>=10.0.0
+tkcalendar>=1.6.0
