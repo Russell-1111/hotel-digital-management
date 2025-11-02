@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import datetime, timedelta
 from app.storage import write_csv_atomic, read_csv, backup_now, ensure_dirs
-from app.config import AppConfig
+from app.rooms import AppConfig
 
 
 def test_csv_read_write(tmp_path: Path):

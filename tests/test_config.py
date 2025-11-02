@@ -1,5 +1,5 @@
 from pathlib import Path
-from app.config import load_config, AppConfig
+from app.rooms import load_config, AppConfig
 import configparser
 
 

@@ -1,7 +1,10 @@
 # billing Specification
 
 ## Purpose
-TBD - created by archiving change add-hotel-core-ops. Update Purpose after archive.
+Billing logic has been consolidated into the `reservations` module. The `compute_total` function calculates stay costs with service charges and taxes.
+
+**Note**: As of October 31, 2025, billing functionality is implemented in `app/reservations.py` rather than a separate module. This consolidation reduces module count and improves code locality since billing is exclusively used by reservation operations.
+
 ## Requirements
 ### Requirement: Stay Cost Calculation
 The system SHALL calculate the total stay cost in MYR with service charge and tax as follows:

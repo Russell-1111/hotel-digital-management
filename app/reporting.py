@@ -8,11 +8,29 @@ from .reservations import list_reservations, Reservation
 
 
 def daily_checkin_list(reservations_path: Path, date_str: str) -> List[Reservation]:
-    return [r for r in list_reservations(reservations_path) if r.check_in_date == date_str and r.status in {"Confirmed"}]
+    """Return check-ins for a given date, excluding invalid reservations where check-in >= check-out."""
+    rs = list_reservations(reservations_path)
+    valid = []
+    for r in rs:
+        # Skip invalid reservations (check-in must be before check-out)
+        if r.check_in_date >= r.check_out_date:
+            continue
+        if r.check_in_date == date_str and r.status in {"Confirmed", "Checked-In"}:
+            valid.append(r)
+    return valid
 
 
 def daily_checkout_list(reservations_path: Path, date_str: str) -> List[Reservation]:
-    return [r for r in list_reservations(reservations_path) if r.check_out_date == date_str and r.status in {"Checked-In"}]
+    """Return check-outs for a given date, excluding invalid reservations where check-in >= check-out."""
+    rs = list_reservations(reservations_path)
+    valid = []
+    for r in rs:
+        # Skip invalid reservations (check-in must be before check-out)
+        if r.check_in_date >= r.check_out_date:
+            continue
+        if r.check_out_date == date_str and r.status in {"Checked-In"}:
+            valid.append(r)
+    return valid
 
 
 def monthly_revenue_summary(reservations_path: Path, year_month: str) -> float:

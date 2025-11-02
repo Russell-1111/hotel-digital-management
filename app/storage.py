@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Iterable, List, Dict
 
-from .config import AppConfig
+from .rooms import AppConfig
 
 
 @dataclass

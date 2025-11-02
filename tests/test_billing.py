@@ -1,4 +1,4 @@
-from app.billing import compute_total
+from app.reservations import compute_total
 
 
 def test_compute_total_example():

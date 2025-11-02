@@ -9,7 +9,7 @@ from app.reservations import (
     auto_status_transitions,
 )
 from app.rooms import Room
-from app.config import AppConfig
+from app.rooms import AppConfig
 from app.storage import write_csv_atomic
 
 FIELDNAMES = [

@@ -5,10 +5,30 @@ from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import List, Dict, Optional
 
-from .billing import compute_total
-from .config import AppConfig
+from .rooms import AppConfig
 from .rooms import Room
 from .storage import read_csv, write_csv_atomic, file_lock
+
+
+def compute_total(nightly_rate: float, nights: int, service_rate: float, tax_rate: float) -> float:
+    """
+    Calculate total stay cost with service charge and tax.
+    
+    Formula:
+    - subtotal = nightly_rate × nights
+    - service = subtotal × service_rate (10%)
+    - tax_base = subtotal + service
+    - tax = tax_base × tax_rate (6%)
+    - total = subtotal + service + tax
+    """
+    if nights <= 0:
+        return 0.0
+    subtotal = nightly_rate * nights
+    service = round(subtotal * service_rate, 2)
+    tax_base = subtotal + service
+    tax = round(tax_base * tax_rate, 2)
+    total = round(subtotal + service + tax, 2)
+    return total
 
 
 @dataclass
@@ -82,6 +102,10 @@ def _nights(check_in_date: str, check_out_date: str) -> int:
 
 
 def create_reservation(cfg: AppConfig, reservations_path: Path, room: Room, guest_name: str, phone: str, email: str, check_in_date: str, check_out_date: str, num_guests: int) -> Reservation:
+    # Validate check-in is before check-out
+    if _parse_date(check_in_date) >= _parse_date(check_out_date):
+        raise ValueError("Check-in date must be before check-out date")
+    
     # Read existing
     existing = list_reservations(reservations_path)
     if not is_room_available(existing, room.room_id, check_in_date, check_out_date):
@@ -165,6 +189,10 @@ def modify_reservation(
     final_room_id = new_room.room_id if new_room else target.room_id
     final_check_in = new_check_in if new_check_in else target.check_in_date
     final_check_out = new_check_out if new_check_out else target.check_out_date
+
+    # Validate check-in is before check-out
+    if _parse_date(final_check_in) >= _parse_date(final_check_out):
+        raise ValueError("Check-in date must be before check-out date")
 
     # If room or dates changed, re-check availability (excluding this reservation)
     if room_changed or dates_changed:

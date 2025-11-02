@@ -12,7 +12,7 @@ except Exception:
     # Fallback to standard DateEntry if the subclass cannot be imported for any reason
     from tkcalendar import DateEntry
 
-from app.config import load_config
+from app.rooms import load_config
 from app.storage import ensure_dirs, start_daily_backup_scheduler
 from app.reporting import daily_checkin_list, daily_checkout_list, monthly_revenue_summary, guest_reservation_detail_report, compute_nights
 from app.rooms import load_rooms, index_by_id, load_room_image

@@ -47,7 +47,7 @@ currency = MYR
     # Mock backup scheduler to avoid background threads in tests
     with patch('app.ui.main.start_daily_backup_scheduler'):
         with patch('app.ui.main.load_config') as mock_config:
-            from app.config import load_config as real_load_config
+            from app.rooms import load_config as real_load_config
             cfg = real_load_config(config_path)
             # Override paths to use tmp_path
             cfg.data_dir = data_dir
