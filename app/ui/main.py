@@ -4,7 +4,7 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 try:
     # Use the robust subclass that refreshes the popup to avoid arrow glitches
     from app.ui.fixed_dateentry import FixedDateEntry as DateEntry
@@ -91,6 +91,106 @@ class App(tk.Tk):
         logging.getLogger(__name__).error(f"{title}: {message}")
         messagebox.showerror(title, full_msg)
 
+    def _validate_date_range(self, start_entry, end_entry, auto_adjust_end=True):
+        """
+        Validate that start date is before end date and they are not the same.
+        
+        Args:
+            start_entry: DateEntry widget for start date
+            end_entry: DateEntry widget for end date
+            auto_adjust_end: If True, automatically adjust end date to be one day after start
+            
+        Returns:
+            bool: True if dates are valid, False otherwise
+        """
+        try:
+            start_str = start_entry.get()
+            end_str = end_entry.get()
+            
+            start_date = datetime.strptime(start_str, '%Y-%m-%d')
+            end_date = datetime.strptime(end_str, '%Y-%m-%d')
+            
+            # Check if dates are the same
+            if start_date == end_date:
+                if auto_adjust_end:
+                    # Auto-adjust end date to be one day after start
+                    new_end = start_date + timedelta(days=1)
+                    end_entry.set_date(new_end)
+                    return True
+                else:
+                    from tkinter import messagebox
+                    messagebox.showwarning("Invalid Date Range", "Start and end dates cannot be the same. End date must be at least one day after start date.")
+                    return False
+            
+            # Check if start is after end
+            if start_date >= end_date:
+                if auto_adjust_end:
+                    # Auto-adjust end date to be one day after start
+                    new_end = start_date + timedelta(days=1)
+                    end_entry.set_date(new_end)
+                    return True
+                else:
+                    from tkinter import messagebox
+                    messagebox.showwarning("Invalid Date Range", "Start date must be before end date.")
+                    return False
+            
+            return True
+            
+        except ValueError:
+            return False
+
+    def _on_checkin_date_change(self):
+        """Handler for when check-in date changes - auto-adjust check-out to be one day after."""
+        try:
+            checkin_str = self.ci_entry.get()
+            checkin_date = datetime.strptime(checkin_str, '%Y-%m-%d')
+            
+            # Set check-out to one day after check-in
+            new_checkout = checkin_date + timedelta(days=1)
+            self.co_entry.set_date(new_checkout)
+            
+        except ValueError:
+            pass  # Invalid date format, skip auto-adjustment
+
+    def _on_availability_start_change(self):
+        """Handler for when availability start date changes - auto-adjust end to be one day after."""
+        try:
+            start_str = self.av_start_entry.get()
+            start_date = datetime.strptime(start_str, '%Y-%m-%d')
+            
+            # Set end to one day after start
+            new_end = start_date + timedelta(days=1)
+            self.av_end_entry.set_date(new_end)
+            
+        except ValueError:
+            pass  # Invalid date format, skip auto-adjustment
+
+    def _on_report_start_change(self):
+        """Handler for when report start date changes - auto-adjust end to be one day after."""
+        try:
+            start_str = self.start_date_entry.get()
+            start_date = datetime.strptime(start_str, '%Y-%m-%d')
+            
+            # Set end to one day after start
+            new_end = start_date + timedelta(days=1)
+            self.end_date_entry.set_date(new_end)
+            
+        except ValueError:
+            pass  # Invalid date format, skip auto-adjustment
+
+    def _on_modify_checkin_change(self, ci_entry, co_entry):
+        """Handler for modify dialog check-in date changes - auto-adjust check-out to be one day after."""
+        try:
+            checkin_str = ci_entry.get()
+            checkin_date = datetime.strptime(checkin_str, '%Y-%m-%d')
+            
+            # Set check-out to one day after check-in
+            new_checkout = checkin_date + timedelta(days=1)
+            co_entry.set_date(new_checkout)
+            
+        except ValueError:
+            pass  # Invalid date format, skip auto-adjustment
+
     def _build_ops(self):
         # Date input with consistent padding
         row = ttk.Frame(self.ops_frame, padding=8)
@@ -166,12 +266,20 @@ class App(tk.Tk):
         ttk.Label(r2, text="Check-in (YYYY-MM-DD)").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         self.ci_entry = DateEntry(r2, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         self.ci_entry.grid(row=0, column=1, padx=(0, 8))
+        # Bind check-in date change to auto-adjust check-out
+        self.ci_entry.bind('<<DateEntrySelected>>', lambda e: self._on_checkin_date_change())
         ttk.Label(r2, text="Check-out (YYYY-MM-DD)").grid(row=0, column=2, sticky=tk.W, padx=(8, 8))
         self.co_entry = DateEntry(r2, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         self.co_entry.grid(row=0, column=3, padx=(0, 8))
+        # Bind check-out date change to validate date range
+        self.co_entry.bind('<<DateEntrySelected>>', lambda e: self._validate_date_range(self.ci_entry, self.co_entry, auto_adjust_end=True))
         ttk.Label(r2, text="Guests").grid(row=0, column=4, sticky=tk.W, padx=(8, 8))
         self.num_guests = tk.StringVar(value="1")
         ttk.Entry(r2, textvariable=self.num_guests, width=6).grid(row=0, column=5)
+        
+        # Set default end date to one day after start date
+        tomorrow = datetime.now() + timedelta(days=1)
+        self.co_entry.set_date(tomorrow)
 
         # Row 3: Room selection with image preview
         r3 = ttk.Frame(form)
@@ -230,6 +338,13 @@ class App(tk.Tk):
             self.room_combo['values'] = []
             self.room_choice.set('')
             return
+        
+        # Validate date range before proceeding
+        if not self._validate_date_range(self.ci_entry, self.co_entry, auto_adjust_end=True):
+            self.room_combo['values'] = []
+            self.room_choice.set('')
+            return
+        
         reservations = list_reservations(self.paths.reservations)
         avail = []
         for room in self.rooms:
@@ -271,6 +386,11 @@ class App(tk.Tk):
         if not choice:
             self._show_error("Validation Error", "Please select an available room.")
             return
+        
+        # Validate date range before creating reservation
+        if not self._validate_date_range(self.ci_entry, self.co_entry, auto_adjust_end=False):
+            return
+        
         room_id = choice.split()[0]
         room = self.rooms_by_id.get(room_id)
         if not room:
@@ -356,11 +476,15 @@ class App(tk.Tk):
         mod_ci_entry = DateEntry(frm, width=28, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         mod_ci_entry.set_date(datetime.strptime(target.check_in_date, '%Y-%m-%d'))
         mod_ci_entry.grid(row=3, column=1, pady=4)
+        # Bind check-in change to auto-adjust check-out
+        mod_ci_entry.bind('<<DateEntrySelected>>', lambda e: self._on_modify_checkin_change(mod_ci_entry, mod_co_entry))
 
         ttk.Label(frm, text="Check-out (YYYY-MM-DD)").grid(row=4, column=0, sticky=tk.W, pady=4)
         mod_co_entry = DateEntry(frm, width=28, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         mod_co_entry.set_date(datetime.strptime(target.check_out_date, '%Y-%m-%d'))
         mod_co_entry.grid(row=4, column=1, pady=4)
+        # Bind check-out change to validate date range
+        mod_co_entry.bind('<<DateEntrySelected>>', lambda e: self._validate_date_range(mod_ci_entry, mod_co_entry, auto_adjust_end=True))
 
         ttk.Label(frm, text="Number of Guests").grid(row=5, column=0, sticky=tk.W, pady=4)
         mod_guests = tk.StringVar(value=str(target.num_guests))
@@ -408,6 +532,11 @@ class App(tk.Tk):
             new_email = mod_email.get().strip()
             new_ci = mod_ci_entry.get()
             new_co = mod_co_entry.get()
+            
+            # Validate date range before saving
+            if not self._validate_date_range(mod_ci_entry, mod_co_entry, auto_adjust_end=False):
+                return
+            
             try:
                 new_guests = int(mod_guests.get())
             except ValueError:
@@ -450,10 +579,20 @@ class App(tk.Tk):
         ttk.Label(frm, text="Start (YYYY-MM-DD)").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
         self.av_start_entry = DateEntry(frm, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         self.av_start_entry.grid(row=0, column=1, padx=(0, 8))
+        # Bind start date change to auto-adjust end date
+        self.av_start_entry.bind('<<DateEntrySelected>>', lambda e: self._on_availability_start_change())
         ttk.Label(frm, text="End (YYYY-MM-DD)").grid(row=0, column=2, sticky=tk.W, padx=(8, 8))
         self.av_end_entry = DateEntry(frm, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         self.av_end_entry.grid(row=0, column=3, padx=(0, 8))
+        # Bind end date change to validate date range
+        self.av_end_entry.bind('<<DateEntrySelected>>', lambda e: self._validate_date_range(self.av_start_entry, self.av_end_entry, auto_adjust_end=True))
         ttk.Button(frm, text="Check", command=self.refresh_availability).grid(row=0, column=4)
+        
+        # Set default end date to one day after start date
+        today = datetime.now()
+        tomorrow = today + timedelta(days=1)
+        self.av_start_entry.set_date(today)
+        self.av_end_entry.set_date(tomorrow)
 
         # Scrollable container for room availability with images
         list_container = ttk.Frame(self.avail_frame, padding=(8, 0, 8, 8))
@@ -484,6 +623,10 @@ class App(tk.Tk):
             datetime.strptime(start, '%Y-%m-%d')
             datetime.strptime(end, '%Y-%m-%d')
         except ValueError:
+            return
+        
+        # Validate date range before proceeding
+        if not self._validate_date_range(self.av_start_entry, self.av_end_entry, auto_adjust_end=True):
             return
         
         # Clear existing room widgets
@@ -573,10 +716,18 @@ class App(tk.Tk):
         self.start_date_entry = DateEntry(input_row, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         self.start_date_entry.set_date(first_day)
         self.start_date_entry.pack(side=tk.LEFT, padx=(0, 16))
+        # Bind start date change to auto-adjust end date
+        self.start_date_entry.bind('<<DateEntrySelected>>', lambda e: self._on_report_start_change())
         
         ttk.Label(input_row, text="End Date (YYYY-MM-DD):").pack(side=tk.LEFT, padx=(0, 8))
         self.end_date_entry = DateEntry(input_row, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         self.end_date_entry.pack(side=tk.LEFT, padx=(0, 16))
+        # Bind end date change to validate date range
+        self.end_date_entry.bind('<<DateEntrySelected>>', lambda e: self._validate_date_range(self.start_date_entry, self.end_date_entry, auto_adjust_end=True))
+        
+        # Set default end date to one day after start
+        default_end = first_day + timedelta(days=1)
+        self.end_date_entry.set_date(default_end)
         
         ttk.Button(input_row, text="Generate Report", command=self.refresh_guest_detail_report).pack(side=tk.LEFT)
 
