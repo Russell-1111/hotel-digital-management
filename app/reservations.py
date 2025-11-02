@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
@@ -8,6 +9,66 @@ from typing import List, Dict, Optional
 from .rooms import AppConfig
 from .rooms import Room
 from .storage import read_csv, write_csv_atomic, file_lock
+
+
+def validate_phone(phone: str) -> None:
+    """
+    Validate phone number contains only digits.
+    
+    Args:
+        phone: Phone number string to validate
+        
+    Raises:
+        ValueError: If phone contains non-digit characters
+    """
+    if not phone.strip():
+        raise ValueError("Phone number is required")
+    
+    if not phone.strip().isdigit():
+        raise ValueError("Please enter a valid phone number containing only digits")
+
+
+def validate_email(email: str) -> None:
+    """
+    Validate email address ends with @gmail.com or @outlook.com.
+    
+    Args:
+        email: Email address string to validate
+        
+    Raises:
+        ValueError: If email doesn't end with @gmail.com or @outlook.com
+    """
+    if not email.strip():
+        raise ValueError("Email address is required")
+    
+    email_lower = email.strip().lower()
+    
+    # Check if email ends with allowed domains
+    if not (email_lower.endswith('@gmail.com') or email_lower.endswith('@outlook.com')):
+        raise ValueError("Email must end with @gmail.com or @outlook.com")
+    
+    # Check if there's a username before the @ symbol
+    if email_lower.startswith('@'):
+        raise ValueError("Email must end with @gmail.com or @outlook.com")
+
+
+def validate_guest_info(guest_name: str, phone: str, email: str) -> None:
+    """
+    Validate all required guest information fields.
+    
+    Args:
+        guest_name: Guest name string
+        phone: Phone number string
+        email: Email address string
+        
+    Raises:
+        ValueError: If any field is empty or invalid
+    """
+    if not guest_name.strip():
+        raise ValueError("Guest name is required")
+    
+    validate_phone(phone)
+    validate_email(email)
 
 
 def compute_total(nightly_rate: float, nights: int, service_rate: float, tax_rate: float) -> float:
@@ -102,6 +163,9 @@ def _nights(check_in_date: str, check_out_date: str) -> int:
 
 
 def create_reservation(cfg: AppConfig, reservations_path: Path, room: Room, guest_name: str, phone: str, email: str, check_in_date: str, check_out_date: str, num_guests: int) -> Reservation:
+    # Validate guest information (name, phone, email)
+    validate_guest_info(guest_name, phone, email)
+    
     # Validate check-in is before check-out
     if _parse_date(check_in_date) >= _parse_date(check_out_date):
         raise ValueError("Check-in date must be before check-out date")
@@ -172,6 +236,14 @@ def modify_reservation(
             break
     if not target or target.status in {"Cancelled", "Checked-Out"}:
         return False
+
+    # Validate guest information changes
+    if new_guest_name is not None and not new_guest_name.strip():
+        raise ValueError("Guest name is required")
+    if new_phone is not None:
+        validate_phone(new_phone)
+    if new_email is not None:
+        validate_email(new_email)
 
     # Apply changes
     if new_guest_name is not None:
