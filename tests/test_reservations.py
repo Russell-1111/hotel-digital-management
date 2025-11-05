@@ -32,7 +32,7 @@ def test_create_reservation(tmp_path: Path):
     
     res = create_reservation(
         cfg, reservations_path, room,
-        "John Doe", "123456", "john@example.com",
+        "John Doe", "123456", "john@gmail.com",
         "2025-10-25", "2025-10-27", 2
     )
     
@@ -60,11 +60,11 @@ def test_prevent_double_booking(tmp_path: Path):
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
     # First reservation
-    create_reservation(cfg, reservations_path, room, "Alice", "111", "a@x.com", "2025-10-25", "2025-10-27", 2)
+    create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", "2025-10-25", "2025-10-27", 2)
     
     # Try overlapping reservation
     try:
-        create_reservation(cfg, reservations_path, room, "Bob", "222", "b@x.com", "2025-10-26", "2025-10-28", 1)
+        create_reservation(cfg, reservations_path, room, "Bob", "222", "bob@outlook.com", "2025-10-26", "2025-10-28", 1)
         assert False, "Should have raised ValueError"
     except ValueError as e:
         assert "not available" in str(e)
@@ -82,7 +82,7 @@ def test_cancel_reservation(tmp_path: Path):
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
-    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "a@x.com", "2025-10-25", "2025-10-27", 2)
+    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", "2025-10-25", "2025-10-27", 2)
     
     # Cancel
     success = cancel_reservation(reservations_path, res.reservation_id)
@@ -112,7 +112,7 @@ def test_modify_reservation_dates(tmp_path: Path):
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
-    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "a@x.com", "2025-10-25", "2025-10-27", 2)
+    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", "2025-10-25", "2025-10-27", 2)
     original_cost = res.total_cost
     
     # Modify to extend stay by 1 night
@@ -141,7 +141,7 @@ def test_modify_reservation_guest_info(tmp_path: Path):
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
-    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "a@x.com", "2025-10-25", "2025-10-27", 2)
+    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", "2025-10-25", "2025-10-27", 2)
     original_cost = res.total_cost
     
     # Modify guest info only
@@ -149,7 +149,7 @@ def test_modify_reservation_guest_info(tmp_path: Path):
         cfg, reservations_path, res.reservation_id,
         new_guest_name="Alice Smith",
         new_phone="999",
-        new_email="alice.smith@example.com"
+        new_email="alice.smith@outlook.com"
     )
     assert success
     
@@ -157,7 +157,7 @@ def test_modify_reservation_guest_info(tmp_path: Path):
     reservations = list_reservations(reservations_path)
     assert reservations[0].guest_name == "Alice Smith"
     assert reservations[0].phone == "999"
-    assert reservations[0].email == "alice.smith@example.com"
+    assert reservations[0].email == "alice.smith@outlook.com"
     assert reservations[0].total_cost == original_cost  # Cost unchanged
 
 

@@ -1,0 +1,9 @@
+2025-11-04 08:30:07,993 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-04 08:30:08,506 INFO [app.ui.main] UI initializing
+2025-11-04 08:30:44,914 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Guest name is required
+2025-11-04 08:31:07,921 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Phone number is required
+2025-11-04 08:31:12,505 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Please enter a valid phone number containing only digits
+2025-11-04 08:31:17,393 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email address is required
+2025-11-04 08:31:21,268 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email must end with @gmail.com or @outlook.com
+2025-11-04 08:31:32,708 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email must end with @gmail.com or @outlook.com
+2025-11-04 08:31:49,147 ERROR [app.ui.main] Validation Error: Please select an available room.

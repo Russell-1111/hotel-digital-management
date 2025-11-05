@@ -1,9 +1,0 @@
-2025-10-26 08:52:57,171 INFO [__main__] Starting Hotel Digital Management UI
-2025-10-26 08:52:57,628 INFO [app.ui.main] UI initializing
-2025-10-26 08:57:51,099 INFO [__main__] Starting Hotel Digital Management UI
-2025-10-26 08:57:51,154 INFO [app.ui.main] UI initializing
-2025-10-26 08:59:14,353 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Room not available for the selected dates
-2025-10-26 09:01:32,076 INFO [__main__] Starting Hotel Digital Management UI
-2025-10-26 09:01:32,125 INFO [app.ui.main] UI initializing
-2025-10-26 09:02:01,963 INFO [__main__] Starting Hotel Digital Management UI
-2025-10-26 09:02:02,018 INFO [app.ui.main] UI initializing
