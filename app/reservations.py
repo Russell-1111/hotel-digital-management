@@ -166,6 +166,12 @@ def create_reservation(cfg: AppConfig, reservations_path: Path, room: Room, gues
     # Validate guest information (name, phone, email)
     validate_guest_info(guest_name, phone, email)
     
+    # Validate check-in date is not in the past
+    today = datetime.now().date()
+    checkin_date = _parse_date(check_in_date).date()
+    if checkin_date < today:
+        raise ValueError("Check-in date cannot be in the past")
+    
     # Validate check-in is before check-out
     if _parse_date(check_in_date) >= _parse_date(check_out_date):
         raise ValueError("Check-in date must be before check-out date")
@@ -261,6 +267,13 @@ def modify_reservation(
     final_room_id = new_room.room_id if new_room else target.room_id
     final_check_in = new_check_in if new_check_in else target.check_in_date
     final_check_out = new_check_out if new_check_out else target.check_out_date
+
+    # Validate check-in date is not in the past (only if dates are being changed)
+    if dates_changed:
+        today = datetime.now().date()
+        checkin_date = _parse_date(final_check_in).date()
+        if checkin_date < today:
+            raise ValueError("Check-in date cannot be in the past")
 
     # Validate check-in is before check-out
     if _parse_date(final_check_in) >= _parse_date(final_check_out):

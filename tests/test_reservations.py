@@ -30,10 +30,15 @@ def test_create_reservation(tmp_path: Path):
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
+    # Use future dates
+    today = datetime.now()
+    check_in = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    check_out = (today + timedelta(days=3)).strftime("%Y-%m-%d")
+    
     res = create_reservation(
         cfg, reservations_path, room,
         "John Doe", "123456", "john@gmail.com",
-        "2025-10-25", "2025-10-27", 2
+        check_in, check_out, 2
     )
     
     assert res.room_id == "101"
@@ -59,12 +64,19 @@ def test_prevent_double_booking(tmp_path: Path):
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
+    # Use future dates
+    today = datetime.now()
+    check_in_1 = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    check_out_1 = (today + timedelta(days=3)).strftime("%Y-%m-%d")
+    check_in_2 = (today + timedelta(days=2)).strftime("%Y-%m-%d")
+    check_out_2 = (today + timedelta(days=4)).strftime("%Y-%m-%d")
+    
     # First reservation
-    create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", "2025-10-25", "2025-10-27", 2)
+    create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", check_in_1, check_out_1, 2)
     
     # Try overlapping reservation
     try:
-        create_reservation(cfg, reservations_path, room, "Bob", "222", "bob@outlook.com", "2025-10-26", "2025-10-28", 1)
+        create_reservation(cfg, reservations_path, room, "Bob", "222", "bob@outlook.com", check_in_2, check_out_2, 1)
         assert False, "Should have raised ValueError"
     except ValueError as e:
         assert "not available" in str(e)
@@ -82,7 +94,12 @@ def test_cancel_reservation(tmp_path: Path):
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
-    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", "2025-10-25", "2025-10-27", 2)
+    # Use future dates
+    today = datetime.now()
+    check_in = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    check_out = (today + timedelta(days=3)).strftime("%Y-%m-%d")
+    
+    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", check_in, check_out, 2)
     
     # Cancel
     success = cancel_reservation(reservations_path, res.reservation_id)
@@ -93,7 +110,7 @@ def test_cancel_reservation(tmp_path: Path):
     assert reservations[0].status == "Cancelled"
     
     # Should now be available for booking
-    assert is_room_available(reservations, "101", "2025-10-25", "2025-10-27")
+    assert is_room_available(reservations, "101", check_in, check_out)
 
 
 def test_modify_reservation_dates(tmp_path: Path):
@@ -112,16 +129,22 @@ def test_modify_reservation_dates(tmp_path: Path):
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
-    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", "2025-10-25", "2025-10-27", 2)
+    # Use future dates
+    today = datetime.now()
+    check_in = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    check_out = (today + timedelta(days=3)).strftime("%Y-%m-%d")
+    new_check_out = (today + timedelta(days=4)).strftime("%Y-%m-%d")
+    
+    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", check_in, check_out, 2)
     original_cost = res.total_cost
     
     # Modify to extend stay by 1 night
-    success = modify_reservation(cfg, reservations_path, res.reservation_id, new_check_out="2025-10-28")
+    success = modify_reservation(cfg, reservations_path, res.reservation_id, new_check_out=new_check_out)
     assert success
     
     # Verify changes
     reservations = list_reservations(reservations_path)
-    assert reservations[0].check_out_date == "2025-10-28"
+    assert reservations[0].check_out_date == new_check_out
     # 3 nights @ 100: subtotal 300 + 30 service + 19.8 tax = 349.8
     assert reservations[0].total_cost == 349.8
 
@@ -141,7 +164,12 @@ def test_modify_reservation_guest_info(tmp_path: Path):
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
-    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", "2025-10-25", "2025-10-27", 2)
+    # Use future dates
+    today = datetime.now()
+    check_in = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    check_out = (today + timedelta(days=3)).strftime("%Y-%m-%d")
+    
+    res = create_reservation(cfg, reservations_path, room, "Alice", "111", "alice@gmail.com", check_in, check_out, 2)
     original_cost = res.total_cost
     
     # Modify guest info only
