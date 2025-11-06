@@ -15,6 +15,9 @@ DEFAULT_CONFIG = {
         'data_dir': 'data',
         'backup_dir': 'backups'
     },
+    'storage': {
+        'use_sqlite': 'true'
+    },
     'ops': {
         'check_in_time': '14:00',
         'check_out_time': '11:00',
@@ -33,6 +36,7 @@ DEFAULT_CONFIG = {
 class AppConfig:
     data_dir: Path
     backup_dir: Path
+    use_sqlite: bool
     check_in_time: str
     check_out_time: str
     backup_time: str
@@ -50,10 +54,12 @@ def load_config(config_path: Path) -> AppConfig:
 
     data_dir = Path(cfg['paths']['data_dir'])
     backup_dir = Path(cfg['paths']['backup_dir'])
+    use_sqlite = cfg.getboolean('storage', 'use_sqlite', fallback=True)
 
     return AppConfig(
         data_dir=data_dir,
         backup_dir=backup_dir,
+        use_sqlite=use_sqlite,
         check_in_time=cfg['ops']['check_in_time'],
         check_out_time=cfg['ops']['check_out_time'],
         backup_time=cfg['ops']['backup_time'],

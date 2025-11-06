@@ -46,6 +46,7 @@ def test_backup_creation_and_retention(tmp_path: Path):
     cfg = AppConfig(
         data_dir=data_dir,
         backup_dir=backup_dir,
+        use_sqlite=False,
         check_in_time="14:00",
         check_out_time="11:00",
         backup_time="02:30",
@@ -89,6 +90,7 @@ def test_ensure_dirs_creates_structure(tmp_path: Path):
     cfg = AppConfig(
         data_dir=tmp_path / "data",
         backup_dir=tmp_path / "backups",
+        use_sqlite=False,
         check_in_time="14:00",
         check_out_time="11:00",
         backup_time="02:30",

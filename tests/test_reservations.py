@@ -24,7 +24,7 @@ def test_create_reservation(tmp_path: Path):
     reservations_path.write_text("reservation_id,room_id,guest_name,phone,email,check_in_date,check_out_date,num_guests,status,total_cost,created_at,updated_at\n", encoding='utf-8')
     
     cfg = AppConfig(
-        data_dir=tmp_path, backup_dir=tmp_path, check_in_time="14:00", check_out_time="11:00",
+        data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
         backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR"
     )
     
@@ -53,7 +53,7 @@ def test_prevent_double_booking(tmp_path: Path):
     reservations_path.write_text("reservation_id,room_id,guest_name,phone,email,check_in_date,check_out_date,num_guests,status,total_cost,created_at,updated_at\n", encoding='utf-8')
     
     cfg = AppConfig(
-        data_dir=tmp_path, backup_dir=tmp_path, check_in_time="14:00", check_out_time="11:00",
+        data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
         backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR"
     )
     
@@ -76,7 +76,7 @@ def test_cancel_reservation(tmp_path: Path):
     reservations_path.write_text("reservation_id,room_id,guest_name,phone,email,check_in_date,check_out_date,num_guests,status,total_cost,created_at,updated_at\n", encoding='utf-8')
     
     cfg = AppConfig(
-        data_dir=tmp_path, backup_dir=tmp_path, check_in_time="14:00", check_out_time="11:00",
+        data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
         backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR"
     )
     
@@ -106,7 +106,7 @@ def test_modify_reservation_dates(tmp_path: Path):
     rooms_path.write_text("room_id,room_type,base_price\n101,Standard,100.00\n102,Deluxe,150.00\n", encoding='utf-8')
     
     cfg = AppConfig(
-        data_dir=tmp_path, backup_dir=tmp_path, check_in_time="14:00", check_out_time="11:00",
+        data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
         backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR"
     )
     
@@ -135,7 +135,7 @@ def test_modify_reservation_guest_info(tmp_path: Path):
     rooms_path.write_text("room_id,room_type,base_price\n101,Standard,100.00\n", encoding='utf-8')
     
     cfg = AppConfig(
-        data_dir=tmp_path, backup_dir=tmp_path, check_in_time="14:00", check_out_time="11:00",
+        data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
         backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR"
     )
     
