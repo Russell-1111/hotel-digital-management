@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+from typing import Dict, Optional
 from zoneinfo import ZoneInfo
 try:
     # Use the robust subclass that refreshes the popup to avoid arrow glitches
@@ -382,6 +383,338 @@ class ChangePasswordDialog(tk.Toplevel):
             self.status_label.config(text="An error occurred. Check logs.", foreground="red")
 
 
+class UserManagementDialog(tk.Toplevel):
+    """Dialog for managing user accounts (admin-only)."""
+    
+    def __init__(self, parent, db_path: Path, current_user: Dict[str, str]):
+        super().__init__(parent)
+        self.db_path = db_path
+        self.current_user = current_user
+        self.user_index_map = {}  # Map listbox indices to usernames
+        
+        self.title("User Management")
+        self.geometry("600x400")
+        self.resizable(True, True)
+        self.transient(parent)
+        self.grab_set()
+        
+        self._build_ui()
+        self._refresh_users()
+        
+    def _build_ui(self):
+        """Build the user management interface."""
+        main_frame = ttk.Frame(self, padding=10)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Header
+        header = ttk.Label(
+            main_frame,
+            text="User Account Management",
+            font=('Segoe UI', 12, 'bold')
+        )
+        header.pack(pady=(0, 10))
+        
+        # User list with scrollbar
+        list_frame = ttk.Frame(main_frame)
+        list_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        scrollbar = ttk.Scrollbar(list_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.user_listbox = tk.Listbox(
+            list_frame,
+            yscrollcommand=scrollbar.set,
+            font=('Courier New', 10),
+            height=12
+        )
+        self.user_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.user_listbox.yview)
+        
+        # Status label
+        self.status_label = ttk.Label(main_frame, text="", foreground="blue")
+        self.status_label.pack(pady=(0, 10))
+        
+        # Action buttons
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(fill=tk.X)
+        
+        ttk.Button(
+            btn_frame,
+            text="Change Role (Admin ↔ Staff)",
+            command=self._change_role
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            btn_frame,
+            text="Delete User",
+            command=self._delete_user
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            btn_frame,
+            text="Create New User",
+            command=self._create_user
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            btn_frame,
+            text="Refresh",
+            command=self._refresh_users
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            btn_frame,
+            text="Close",
+            command=self.destroy
+        ).pack(side=tk.RIGHT, padx=5)
+        
+    def _refresh_users(self):
+        """Refresh the user list."""
+        self.user_listbox.delete(0, tk.END)
+        self.status_label.config(text="", foreground="blue")
+        
+        # Store mapping of listbox indices to usernames for reliable lookup
+        self.user_index_map = {}
+        
+        try:
+            users = auth.list_users(self.db_path)
+            
+            # Add header
+            self.user_listbox.insert(
+                tk.END,
+                f"{'Username':<20} {'Role':<10} {'Created':<20}"
+            )
+            self.user_listbox.insert(tk.END, "─" * 50)
+            
+            # Add users
+            for idx, user in enumerate(users):
+                created_str = user['created_at'][:19] if user['created_at'] else 'N/A'
+                current_marker = " ← (You)" if user['username'] == self.current_user['username'] else ""
+                display_line = f"{user['username']:<20} {user['role']:<10} {created_str}{current_marker}"
+                self.user_listbox.insert(tk.END, display_line)
+                
+                # Store mapping: listbox_index (starting from 2 after headers) -> username
+                self.user_index_map[2 + idx] = user['username']
+            
+            self.status_label.config(text=f"Total users: {len(users)}", foreground="green")
+            
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to list users: {e}")
+            self.status_label.config(text="Error loading users. Check logs.", foreground="red")
+    
+    def _get_selected_username(self) -> Optional[str]:
+        """Extract username from selected listbox item using index map."""
+        selection = self.user_listbox.curselection()
+        if not selection:
+            self.status_label.config(text="Please select a user first", foreground="orange")
+            return None
+        
+        line_idx = selection[0]
+        if line_idx < 2:  # Skip header rows
+            self.status_label.config(text="Please select a user (not the header)", foreground="orange")
+            return None
+        
+        # Use the index map for reliable username lookup
+        username = self.user_index_map.get(line_idx)
+        
+        if not username:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"No username mapping found for listbox index {line_idx}")
+            self.status_label.config(text="Error: User not found in index", foreground="red")
+            return None
+        
+        return username
+    
+    def _change_role(self):
+        """Change selected user's role."""
+        username = self._get_selected_username()
+        if not username:
+            return
+        
+        # Get current role
+        try:
+            users = auth.list_users(self.db_path)
+            user = next((u for u in users if u['username'] == username), None)
+            
+            if not user:
+                self.status_label.config(text=f"User '{username}' not found", foreground="red")
+                return
+            
+            current_role = user['role']
+            new_role = 'staff' if current_role == 'admin' else 'admin'
+            
+            # Confirm action
+            from tkinter import messagebox
+            if not messagebox.askyesno(
+                "Confirm Role Change",
+                f"Change user '{username}' from '{current_role}' to '{new_role}'?",
+                parent=self
+            ):
+                return
+            
+            # Update role
+            auth.update_user_role(self.db_path, username, new_role, self.current_user['role'])
+            self.status_label.config(
+                text=f"✓ Changed '{username}' from {current_role} to {new_role}",
+                foreground="green"
+            )
+            self._refresh_users()
+            
+        except PermissionError as e:
+            self.status_label.config(text=str(e), foreground="red")
+        except ValueError as e:
+            from tkinter import messagebox
+            messagebox.showerror("Cannot Change Role", str(e), parent=self)
+            self.status_label.config(text="Role change failed", foreground="red")
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to change role: {e}")
+            self.status_label.config(text="Error changing role. Check logs.", foreground="red")
+    
+    def _delete_user(self):
+        """Delete selected user."""
+        username = self._get_selected_username()
+        if not username:
+            return
+        
+        # Prevent deleting yourself
+        if username == self.current_user['username']:
+            from tkinter import messagebox
+            messagebox.showwarning(
+                "Cannot Delete Self",
+                "You cannot delete your own account while logged in.",
+                parent=self
+            )
+            return
+        
+        # Confirm deletion
+        from tkinter import messagebox
+        if not messagebox.askyesno(
+            "Confirm Deletion",
+            f"Permanently delete user '{username}'?\n\nThis action cannot be undone.",
+            parent=self
+        ):
+            return
+        
+        try:
+            auth.delete_user(self.db_path, username, self.current_user['role'])
+            self.status_label.config(
+                text=f"✓ Deleted user '{username}'",
+                foreground="green"
+            )
+            self._refresh_users()
+            
+        except PermissionError as e:
+            self.status_label.config(text=str(e), foreground="red")
+        except ValueError as e:
+            from tkinter import messagebox
+            messagebox.showerror("Cannot Delete User", str(e), parent=self)
+            self.status_label.config(text="Deletion failed", foreground="red")
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to delete user: {e}")
+            self.status_label.config(text="Error deleting user. Check logs.", foreground="red")
+    
+    def _create_user(self):
+        """Show dialog to create a new user."""
+        dialog = CreateUserDialog(self, self.db_path, self.current_user['role'])
+        self.wait_window(dialog)
+        
+        if dialog.user_created:
+            self._refresh_users()
+
+
+class CreateUserDialog(tk.Toplevel):
+    """Dialog for creating a new user account."""
+    
+    def __init__(self, parent, db_path: Path, current_user_role: str):
+        super().__init__(parent)
+        self.db_path = db_path
+        self.current_user_role = current_user_role
+        self.user_created = False
+        
+        self.title("Create New User")
+        self.geometry("400x320")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
+        
+        self._build_ui()
+        self.username_entry.focus()
+        
+    def _build_ui(self):
+        """Build the user creation form."""
+        main_frame = ttk.Frame(self, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(
+            main_frame,
+            text="Create New User Account",
+            font=('Segoe UI', 10, 'bold')
+        ).pack(pady=(0, 15))
+        
+        ttk.Label(main_frame, text="Username:").pack(anchor=tk.W)
+        self.username_entry = ttk.Entry(main_frame, width=30)
+        self.username_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(main_frame, text="Password (min 8 characters):").pack(anchor=tk.W)
+        self.password_entry = ttk.Entry(main_frame, width=30, show='*')
+        self.password_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(main_frame, text="Confirm Password:").pack(anchor=tk.W)
+        self.confirm_entry = ttk.Entry(main_frame, width=30, show='*')
+        self.confirm_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(main_frame, text="Role:").pack(anchor=tk.W)
+        self.role_var = tk.StringVar(value='staff')
+        role_frame = ttk.Frame(main_frame)
+        role_frame.pack(fill=tk.X, pady=(0, 15))
+        ttk.Radiobutton(role_frame, text="Staff", variable=self.role_var, value='staff').pack(side=tk.LEFT)
+        ttk.Radiobutton(role_frame, text="Admin", variable=self.role_var, value='admin').pack(side=tk.LEFT, padx=20)
+        
+        self.status_label = ttk.Label(main_frame, text="", foreground="red")
+        self.status_label.pack(pady=(0, 10))
+        
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack()
+        ttk.Button(btn_frame, text="Create User", command=self._create).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side=tk.LEFT, padx=5)
+        
+        self.username_entry.bind('<Return>', lambda e: self._create())
+        self.password_entry.bind('<Return>', lambda e: self._create())
+        self.confirm_entry.bind('<Return>', lambda e: self._create())
+    
+    def _create(self):
+        """Validate and create new user."""
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get()
+        confirm = self.confirm_entry.get()
+        role = self.role_var.get()
+        
+        if not username:
+            self.status_label.config(text="Username is required", foreground="red")
+            return
+        
+        if len(password) < 8:
+            self.status_label.config(text="Password must be at least 8 characters", foreground="red")
+            return
+        
+        if password != confirm:
+            self.status_label.config(text="Passwords do not match", foreground="red")
+            return
+        
+        try:
+            auth.create_user(self.db_path, username, password, role)
+            self.status_label.config(text="User created successfully!", foreground="green")
+            self.user_created = True
+            self.after(1000, self.destroy)
+            
+        except ValueError as e:
+            self.status_label.config(text=str(e), foreground="red")
+        except Exception as e:
+            logging.getLogger(__name__).error(f"User creation error: {e}")
+            self.status_label.config(text="An error occurred. Check logs.", foreground="red")
+
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -466,6 +799,11 @@ class App(tk.Tk):
                                font=('Segoe UI', 8), foreground='#666')
         user_label.pack(side=tk.LEFT)
         ttk.Button(footer, text="Change Password", command=self._show_change_password).pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Show Manage Users button only for admins
+        if self.current_user['role'] == 'admin':
+            ttk.Button(footer, text="Manage Users", command=self._show_user_management).pack(side=tk.LEFT, padx=(5, 0))
+        
         tz_label = ttk.Label(footer, text=f"Timezone: {self.cfg.timezone}", 
                             font=('Segoe UI', 8), foreground='#666')
         tz_label.pack(side=tk.RIGHT)
@@ -525,6 +863,13 @@ class App(tk.Tk):
     def _show_change_password(self):
         """Show the change password dialog for the current user."""
         dialog = ChangePasswordDialog(self, self.db_path, self.current_user['username'])
+        self.wait_window(dialog)
+    
+    def _show_user_management(self):
+        """Show the user management dialog (admin-only)."""
+        if not self._require_admin("manage users"):
+            return
+        dialog = UserManagementDialog(self, self.db_path, self.current_user)
         self.wait_window(dialog)
 
     def _validate_date_range(self, start_entry, end_entry, auto_adjust_end=True):

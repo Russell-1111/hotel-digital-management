@@ -367,3 +367,168 @@ def get_user_count(db_path: Path) -> int:
         return cursor.fetchone()[0]
     finally:
         conn.close()
+
+
+def update_user_role(db_path: Path, username: str, new_role: str, current_user_role: str) -> bool:
+    """
+    Update a user's role (admin-only operation).
+    
+    Args:
+        db_path: Path to SQLite database
+        username: Username whose role to change
+        new_role: New role to assign ('admin' or 'staff')
+        current_user_role: Role of the user performing this action (must be 'admin')
+        
+    Returns:
+        True if role was changed successfully, False otherwise
+        
+    Raises:
+        ValueError: If new_role is invalid, user doesn't exist, or attempting to demote last admin
+        PermissionError: If current_user_role is not 'admin'
+        
+    Security:
+        - Only admins can change roles
+        - Prevents demoting the last admin (ensures system remains manageable)
+        - Logs all role changes
+        
+    Example:
+        >>> success = update_user_role(db_path, "john", "admin", "admin")
+        >>> if success:
+        ...     print("User promoted to admin")
+    """
+    # Role enforcement
+    if current_user_role != 'admin':
+        logger.warning(f"Non-admin user attempted to change role for '{username}'")
+        raise PermissionError("Only administrators can change user roles")
+    
+    # Validate new role
+    if new_role not in ('admin', 'staff'):
+        raise ValueError("Role must be 'admin' or 'staff'")
+    
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        # Check if user exists and get current role
+        cursor = conn.execute(
+            "SELECT role FROM users WHERE username = ?",
+            (username,)
+        )
+        row = cursor.fetchone()
+        
+        if row is None:
+            logger.warning(f"Attempt to change role for non-existent user '{username}'")
+            raise ValueError(f"User '{username}' does not exist")
+        
+        current_role = row['role']
+        
+        # If demoting from admin to staff, ensure it's not the last admin
+        if current_role == 'admin' and new_role == 'staff':
+            admin_count = conn.execute(
+                "SELECT COUNT(*) as count FROM users WHERE role = 'admin'"
+            ).fetchone()['count']
+            
+            if admin_count <= 1:
+                logger.warning(f"Attempt to demote last admin user '{username}'")
+                raise ValueError(
+                    "Cannot demote the last administrator. "
+                    "Create another admin account first."
+                )
+        
+        # Update role
+        now_utc = datetime.now(timezone.utc).isoformat()
+        conn.execute("""
+            UPDATE users 
+            SET role = ?, updated_at = ?
+            WHERE username = ?
+        """, (new_role, now_utc, username))
+        conn.commit()
+        
+        logger.info(f"User '{username}' role changed from '{current_role}' to '{new_role}'")
+        return True
+        
+    except (ValueError, PermissionError):
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update role for user '{username}': {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def delete_user(db_path: Path, username: str, current_user_role: str) -> bool:
+    """
+    Delete a user account (admin-only operation).
+    
+    Args:
+        db_path: Path to SQLite database
+        username: Username to delete
+        current_user_role: Role of the user performing this action (must be 'admin')
+        
+    Returns:
+        True if user was deleted successfully, False otherwise
+        
+    Raises:
+        ValueError: If user doesn't exist or attempting to delete last admin
+        PermissionError: If current_user_role is not 'admin'
+        
+    Security:
+        - Only admins can delete users
+        - Prevents deleting the last admin (ensures system remains manageable)
+        - Logs all user deletions
+        
+    Warning:
+        This operation is irreversible. User will need to be recreated to regain access.
+        
+    Example:
+        >>> success = delete_user(db_path, "old_staff", "admin")
+        >>> if success:
+        ...     print("User account deleted")
+    """
+    # Role enforcement
+    if current_user_role != 'admin':
+        logger.warning(f"Non-admin user attempted to delete user '{username}'")
+        raise PermissionError("Only administrators can delete user accounts")
+    
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        # Check if user exists and get role
+        cursor = conn.execute(
+            "SELECT role FROM users WHERE username = ?",
+            (username,)
+        )
+        row = cursor.fetchone()
+        
+        if row is None:
+            logger.warning(f"Attempt to delete non-existent user '{username}'")
+            raise ValueError(f"User '{username}' does not exist")
+        
+        user_role = row['role']
+        
+        # If deleting an admin, ensure it's not the last one
+        if user_role == 'admin':
+            admin_count = conn.execute(
+                "SELECT COUNT(*) as count FROM users WHERE role = 'admin'"
+            ).fetchone()['count']
+            
+            if admin_count <= 1:
+                logger.warning(f"Attempt to delete last admin user '{username}'")
+                raise ValueError(
+                    "Cannot delete the last administrator. "
+                    "Create another admin account first."
+                )
+        
+        # Delete user
+        conn.execute("DELETE FROM users WHERE username = ?", (username,))
+        conn.commit()
+        
+        logger.info(f"User '{username}' (role: {user_role}) deleted")
+        return True
+        
+    except (ValueError, PermissionError):
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete user '{username}': {e}")
+        return False
+    finally:
+        conn.close()

@@ -355,6 +355,169 @@ class TestAuth(unittest.TestCase):
         count = auth.get_user_count(self.db_path)
         self.assertEqual(count, 0)
 
+    # -------------------------------------------------------------------------
+    # Role Management Tests
+    # -------------------------------------------------------------------------
+
+    def test_update_user_role_staff_to_admin(self):
+        """Test promoting a staff user to admin."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        auth.create_user(self.db_path, 'staff1', 'Pass2!', 'staff')
+        
+        # Promote staff to admin
+        result = auth.update_user_role(self.db_path, 'staff1', 'admin', 'admin')
+        self.assertTrue(result)
+        
+        # Verify role changed
+        users = auth.list_users(self.db_path)
+        staff_user = next(u for u in users if u['username'] == 'staff1')
+        self.assertEqual(staff_user['role'], 'admin')
+
+    def test_update_user_role_admin_to_staff(self):
+        """Test demoting an admin user to staff."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        auth.create_user(self.db_path, 'admin2', 'Pass2!', 'admin')
+        
+        # Demote admin2 to staff (admin1 remains as admin)
+        result = auth.update_user_role(self.db_path, 'admin2', 'staff', 'admin')
+        self.assertTrue(result)
+        
+        # Verify role changed
+        users = auth.list_users(self.db_path)
+        demoted_user = next(u for u in users if u['username'] == 'admin2')
+        self.assertEqual(demoted_user['role'], 'staff')
+
+    def test_update_user_role_prevent_demote_last_admin(self):
+        """Test that the last admin cannot be demoted."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        
+        # Try to demote the only admin
+        with self.assertRaises(ValueError) as ctx:
+            auth.update_user_role(self.db_path, 'admin1', 'staff', 'admin')
+        
+        self.assertIn("Cannot demote the last administrator", str(ctx.exception))
+
+    def test_update_user_role_invalid_role(self):
+        """Test that invalid role raises ValueError."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        auth.create_user(self.db_path, 'staff1', 'Pass2!', 'staff')
+        
+        with self.assertRaises(ValueError) as ctx:
+            auth.update_user_role(self.db_path, 'staff1', 'superadmin', 'admin')
+        
+        self.assertIn("Role must be 'admin' or 'staff'", str(ctx.exception))
+
+    def test_update_user_role_nonexistent_user(self):
+        """Test that updating nonexistent user raises ValueError."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        
+        with self.assertRaises(ValueError) as ctx:
+            auth.update_user_role(self.db_path, 'nonexistent', 'admin', 'admin')
+        
+        self.assertIn("does not exist", str(ctx.exception))
+
+    def test_update_user_role_requires_admin(self):
+        """Test that only admins can change roles."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        auth.create_user(self.db_path, 'staff1', 'Pass2!', 'staff')
+        
+        # Staff tries to change role
+        with self.assertRaises(PermissionError) as ctx:
+            auth.update_user_role(self.db_path, 'staff1', 'admin', 'staff')
+        
+        self.assertIn("Only administrators can change user roles", str(ctx.exception))
+
+    def test_delete_user_success(self):
+        """Test successfully deleting a user."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        auth.create_user(self.db_path, 'staff1', 'Pass2!', 'staff')
+        
+        count_before = auth.get_user_count(self.db_path)
+        self.assertEqual(count_before, 2)
+        
+        # Delete staff user
+        result = auth.delete_user(self.db_path, 'staff1', 'admin')
+        self.assertTrue(result)
+        
+        count_after = auth.get_user_count(self.db_path)
+        self.assertEqual(count_after, 1)
+        
+        # Verify user is gone
+        users = auth.list_users(self.db_path)
+        usernames = [u['username'] for u in users]
+        self.assertNotIn('staff1', usernames)
+
+    def test_delete_user_prevent_delete_last_admin(self):
+        """Test that the last admin cannot be deleted."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        
+        # Try to delete the only admin
+        with self.assertRaises(ValueError) as ctx:
+            auth.delete_user(self.db_path, 'admin1', 'admin')
+        
+        self.assertIn("Cannot delete the last administrator", str(ctx.exception))
+
+    def test_delete_user_can_delete_admin_if_others_exist(self):
+        """Test that an admin can be deleted if other admins exist."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        auth.create_user(self.db_path, 'admin2', 'Pass2!', 'admin')
+        
+        # Delete one admin (another remains)
+        result = auth.delete_user(self.db_path, 'admin2', 'admin')
+        self.assertTrue(result)
+        
+        count = auth.get_user_count(self.db_path)
+        self.assertEqual(count, 1)
+
+    def test_delete_user_nonexistent_user(self):
+        """Test that deleting nonexistent user raises ValueError."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        
+        with self.assertRaises(ValueError) as ctx:
+            auth.delete_user(self.db_path, 'nonexistent', 'admin')
+        
+        self.assertIn("does not exist", str(ctx.exception))
+
+    def test_delete_user_requires_admin(self):
+        """Test that only admins can delete users."""
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        auth.create_user(self.db_path, 'staff1', 'Pass2!', 'staff')
+        
+        # Staff tries to delete user
+        with self.assertRaises(PermissionError) as ctx:
+            auth.delete_user(self.db_path, 'admin1', 'staff')
+        
+        self.assertIn("Only administrators can delete user accounts", str(ctx.exception))
+
+    def test_username_with_spaces(self):
+        """Test that usernames with spaces work correctly."""
+        # Create users with spaces in names
+        auth.create_user(self.db_path, 'admin1', 'Pass1!', 'admin')
+        auth.create_user(self.db_path, 'John Smith', 'Pass2!', 'staff')
+        auth.create_user(self.db_path, 'Mary Jane Watson', 'Pass3!', 'staff')
+        
+        # Verify users exist
+        users = auth.list_users(self.db_path)
+        usernames = [u['username'] for u in users]
+        self.assertIn('John Smith', usernames)
+        self.assertIn('Mary Jane Watson', usernames)
+        
+        # Test role change with spaced username
+        result = auth.update_user_role(self.db_path, 'John Smith', 'admin', 'admin')
+        self.assertTrue(result)
+        
+        users = auth.list_users(self.db_path)
+        john = next(u for u in users if u['username'] == 'John Smith')
+        self.assertEqual(john['role'], 'admin')
+        
+        # Test deletion with spaced username
+        result = auth.delete_user(self.db_path, 'Mary Jane Watson', 'admin')
+        self.assertTrue(result)
+        
+        users = auth.list_users(self.db_path)
+        usernames = [u['username'] for u in users]
+        self.assertNotIn('Mary Jane Watson', usernames)
+
 
 if __name__ == '__main__':
     unittest.main()
