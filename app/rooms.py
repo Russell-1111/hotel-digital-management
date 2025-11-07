@@ -22,7 +22,8 @@ DEFAULT_CONFIG = {
         'check_in_time': '14:00',
         'check_out_time': '11:00',
         'backup_time': '02:30',
-        'backup_retention_days': '7'
+        'backup_retention_days': '7',
+        'timezone': 'Asia/Kuala_Lumpur'
     },
     'finance': {
         'service_charge_rate': '0.10',
@@ -44,9 +45,12 @@ class AppConfig:
     service_charge_rate: float
     tax_rate: float
     currency: str
+    timezone: str
 
 
 def load_config(config_path: Path) -> AppConfig:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    
     cfg = configparser.ConfigParser()
     cfg.read_dict(DEFAULT_CONFIG)
     if config_path.exists():
@@ -55,6 +59,17 @@ def load_config(config_path: Path) -> AppConfig:
     data_dir = Path(cfg['paths']['data_dir'])
     backup_dir = Path(cfg['paths']['backup_dir'])
     use_sqlite = cfg.getboolean('storage', 'use_sqlite', fallback=True)
+    
+    # Validate timezone
+    timezone_str = cfg['ops']['timezone']
+    try:
+        ZoneInfo(timezone_str)
+    except ZoneInfoNotFoundError:
+        raise ValueError(
+            f"Invalid timezone '{timezone_str}' in config.ini. "
+            f"Please use a valid IANA timezone name (e.g., 'Asia/Kuala_Lumpur', 'UTC', 'America/New_York'). "
+            f"See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a complete list."
+        )
 
     return AppConfig(
         data_dir=data_dir,
@@ -66,7 +81,8 @@ def load_config(config_path: Path) -> AppConfig:
         backup_retention_days=int(cfg['ops']['backup_retention_days']),
         service_charge_rate=float(cfg['finance']['service_charge_rate']),
         tax_rate=float(cfg['finance']['tax_rate']),
-        currency=cfg['finance']['currency']
+        currency=cfg['finance']['currency'],
+        timezone=timezone_str
     )
 
 

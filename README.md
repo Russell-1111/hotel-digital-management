@@ -46,8 +46,13 @@ python -m venv .venv
 ### 3. Install Dependencies
 
 ```powershell
-pip install pytest pytest-cov
+pip install -r requirements.txt
 ```
+
+This installs:
+- `tkcalendar` - Calendar widget for date selection
+- `pytest` and `pytest-cov` - Testing framework
+- `tzdata` - Timezone database (required on Windows for timezone support)
 
 ### 4. Configure Settings (Optional)
 
@@ -55,6 +60,7 @@ Edit `config.ini` to customize:
 - Data and backup directories
 - Check-in/check-out times
 - Backup schedule and retention
+- Hotel timezone (IANA timezone name)
 - Service charge and tax rates
 
 Default `config.ini`:
@@ -68,12 +74,17 @@ check_in_time = 14:00
 check_out_time = 11:00
 backup_time = 02:30
 backup_retention_days = 7
+timezone = Asia/Kuala_Lumpur
 
 [finance]
 service_charge_rate = 0.10
 tax_rate = 0.06
 currency = MYR
 ```
+
+**Important Configuration Notes:**
+
+- **timezone**: Must be a valid IANA timezone name (e.g., `Asia/Kuala_Lumpur`, `UTC`, `America/New_York`). This determines the hotel's operational timezone for check-in/check-out times and scheduled operations. All timestamps are stored in UTC internally but displayed and scheduled according to this timezone. See the [List of tz database time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) for valid timezone names.
 
 ### 5. Initialize Data
 
@@ -255,6 +266,15 @@ python -m pytest tests/ --cov=app --cov-report=term-missing
 - **Edge Cases**: Double-booking, invalid dates, missing data
 
 ## Backup and Recovery
+
+### Timezone-Aware Operations
+
+The system uses timezone-aware datetime handling to ensure accurate scheduling and timestamps:
+
+- **Storage**: All timestamps are stored in UTC with ISO 8601 format
+- **Display**: Times are shown in the hotel's configured timezone
+- **Scheduling**: Check-in/check-out transitions and backups trigger based on hotel local time
+- **Migration**: On first startup with timezone support, existing naive timestamps are automatically migrated to UTC
 
 ### Automatic Backups
 

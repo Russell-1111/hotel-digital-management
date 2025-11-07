@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from app.reservations import (
     create_reservation,
     cancel_reservation,
@@ -25,7 +26,8 @@ def test_create_reservation(tmp_path: Path):
     
     cfg = AppConfig(
         data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
-        backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR"
+        backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR",
+        timezone="Asia/Kuala_Lumpur"
     )
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
@@ -59,7 +61,8 @@ def test_prevent_double_booking(tmp_path: Path):
     
     cfg = AppConfig(
         data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
-        backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR"
+        backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR",
+        timezone="Asia/Kuala_Lumpur"
     )
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
@@ -89,7 +92,8 @@ def test_cancel_reservation(tmp_path: Path):
     
     cfg = AppConfig(
         data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
-        backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR"
+        backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR",
+        timezone="Asia/Kuala_Lumpur"
     )
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
@@ -124,7 +128,8 @@ def test_modify_reservation_dates(tmp_path: Path):
     
     cfg = AppConfig(
         data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
-        backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR"
+        backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR",
+        timezone="Asia/Kuala_Lumpur"
     )
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
@@ -159,7 +164,8 @@ def test_modify_reservation_guest_info(tmp_path: Path):
     
     cfg = AppConfig(
         data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
-        backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR"
+        backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR",
+        timezone="Asia/Kuala_Lumpur"
     )
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
@@ -192,43 +198,68 @@ def test_modify_reservation_guest_info(tmp_path: Path):
 def test_auto_status_transitions(tmp_path: Path):
     """Test automatic status transitions at check-in and check-out times."""
     reservations_path = tmp_path / "reservations.csv"
+    reservations_path.write_text("reservation_id,room_id,guest_name,phone,email,check_in_date,check_out_date,num_guests,status,total_cost,created_at,updated_at\n", encoding='utf-8')
     
-    # Create a reservation that should transition to Checked-In
-    now = datetime.now()
-    checkin_date = now.strftime('%Y-%m-%d')
-    checkout_date = (now + timedelta(days=2)).strftime('%Y-%m-%d')
+    # Get current time in hotel timezone
+    from datetime import timezone as tz
+    now_utc = datetime.now(tz.utc)
+    hotel_tz = ZoneInfo("Asia/Kuala_Lumpur")
+    now_hotel = now_utc.astimezone(hotel_tz)
     
-    rows = [{
-        "reservation_id": "r1",
-        "room_id": "101",
-        "guest_name": "Alice",
-        "phone": "111",
-        "email": "a@x.com",
-        "check_in_date": checkin_date,
-        "check_out_date": checkout_date,
-        "num_guests": "2",
-        "status": "Confirmed",
-        "total_cost": "233.20",
-        "created_at": now.isoformat(),
-        "updated_at": now.isoformat(),
-    }]
+    # Create reservation with check-in date yesterday (should transition to Checked-In)
+    checkin_date_past = (now_hotel - timedelta(days=1)).strftime('%Y-%m-%d')
+    checkout_date_future = (now_hotel + timedelta(days=1)).strftime('%Y-%m-%d')
+    
+    # Create reservation with checkout date yesterday (should transition to Checked-Out)
+    checkin_date_old = (now_hotel - timedelta(days=3)).strftime('%Y-%m-%d')
+    checkout_date_past = (now_hotel - timedelta(days=1)).strftime('%Y-%m-%d')
+    
+    rows = [
+        {
+            "reservation_id": "r1",
+            "room_id": "101",
+            "guest_name": "Alice",
+            "phone": "111",
+            "email": "a@gmail.com",
+            "check_in_date": checkin_date_past,
+            "check_out_date": checkout_date_future,
+            "num_guests": "2",
+            "status": "Confirmed",
+            "total_cost": "233.20",
+            "created_at": now_utc.isoformat(),
+            "updated_at": now_utc.isoformat(),
+        },
+        {
+            "reservation_id": "r2",
+            "room_id": "102",
+            "guest_name": "Bob",
+            "phone": "222",
+            "email": "b@gmail.com",
+            "check_in_date": checkin_date_old,
+            "check_out_date": checkout_date_past,
+            "num_guests": "1",
+            "status": "Checked-In",
+            "total_cost": "349.80",
+            "created_at": now_utc.isoformat(),
+            "updated_at": now_utc.isoformat(),
+        }
+    ]
     
     write_csv_atomic(reservations_path, FIELDNAMES, rows)
     
-    # Simulate time at 14:05 (after check-in time)
-    simulated_time = now.replace(hour=14, minute=5, second=0, microsecond=0)
-    auto_status_transitions(reservations_path, simulated_time, "14:00", "11:00")
+    # Run status transitions
+    auto_status_transitions(reservations_path, hotel_tz, "14:00", "11:00")
     
-    # Should now be Checked-In
+    # Check results
     reservations = list_reservations(reservations_path)
-    assert reservations[0].status == "Checked-In"
+    r1 = next(r for r in reservations if r.reservation_id == "r1")
+    r2 = next(r for r in reservations if r.reservation_id == "r2")
     
-    # Now simulate checkout time
-    checkout_time = datetime.strptime(checkout_date, '%Y-%m-%d').replace(hour=11, minute=5)
-    auto_status_transitions(reservations_path, checkout_time, "14:00", "11:00")
+    # r1 should transition from Confirmed to Checked-In (checkin was yesterday)
+    assert r1.status == "Checked-In"
     
-    reservations = list_reservations(reservations_path)
-    assert reservations[0].status == "Checked-Out"
+    # r2 should transition from Checked-In to Checked-Out (checkout was yesterday)
+    assert r2.status == "Checked-Out"
 
 
 def test_is_room_available_logic(tmp_path: Path):

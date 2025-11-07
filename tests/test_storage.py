@@ -53,7 +53,8 @@ def test_backup_creation_and_retention(tmp_path: Path):
         backup_retention_days=7,
         service_charge_rate=0.10,
         tax_rate=0.06,
-        currency="MYR"
+        currency="MYR",
+        timezone="Asia/Kuala_Lumpur"
     )
     
     from app.storage import FilePaths
@@ -97,7 +98,8 @@ def test_ensure_dirs_creates_structure(tmp_path: Path):
         backup_retention_days=7,
         service_charge_rate=0.10,
         tax_rate=0.06,
-        currency="MYR"
+        currency="MYR",
+        timezone="Asia/Kuala_Lumpur"
     )
     
     fps = ensure_dirs(cfg)

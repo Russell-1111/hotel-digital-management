@@ -2,13 +2,15 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import List, Dict, Optional
+from zoneinfo import ZoneInfo
 
 from .rooms import AppConfig
 from .rooms import Room
 from .storage import read_csv, write_csv_atomic, file_lock
+from .timezone_utils import now_utc, to_utc, get_hotel_tz
 
 
 def validate_phone(phone: str) -> None:
@@ -167,7 +169,8 @@ def create_reservation(cfg: AppConfig, reservations_path: Path, room: Room, gues
     validate_guest_info(guest_name, phone, email)
     
     # Validate check-in date is not in the past
-    today = datetime.now().date()
+    hotel_tz = get_hotel_tz(cfg.timezone)
+    today = now_utc().astimezone(hotel_tz).date()
     checkin_date = _parse_date(check_in_date).date()
     if checkin_date < today:
         raise ValueError("Check-in date cannot be in the past")
@@ -184,7 +187,7 @@ def create_reservation(cfg: AppConfig, reservations_path: Path, room: Room, gues
     rid = str(uuid.uuid4())
     nights = _nights(check_in_date, check_out_date)
     total = compute_total(room.base_price, nights, cfg.service_charge_rate, cfg.tax_rate)
-    now = datetime.now().isoformat(timespec='seconds')
+    now = now_utc().isoformat(timespec='seconds')
     new = Reservation(
         reservation_id=rid,
         room_id=room.room_id,
@@ -270,7 +273,8 @@ def modify_reservation(
 
     # Validate check-in date is not in the past (only if dates are being changed)
     if dates_changed:
-        today = datetime.now().date()
+        hotel_tz = get_hotel_tz(cfg.timezone)
+        today = now_utc().astimezone(hotel_tz).date()
         checkin_date = _parse_date(final_check_in).date()
         if checkin_date < today:
             raise ValueError("Check-in date cannot be in the past")
@@ -305,7 +309,7 @@ def modify_reservation(
         if room_obj:
             target.total_cost = compute_total(room_obj.base_price, nights, cfg.service_charge_rate, cfg.tax_rate)
 
-    target.updated_at = datetime.now().isoformat(timespec='seconds')
+    target.updated_at = now_utc().isoformat(timespec='seconds')
 
     # Write back
     rows: List[Dict[str, str]] = []
@@ -331,7 +335,7 @@ def modify_reservation(
 def cancel_reservation(reservations_path: Path, reservation_id: str) -> bool:
     existing = list_reservations(reservations_path)
     changed = False
-    now = datetime.now().isoformat(timespec='seconds')
+    now = now_utc().isoformat(timespec='seconds')
     for r in existing:
         if r.reservation_id == reservation_id and r.status not in {"Cancelled", "Checked-Out"}:
             r.status = "Cancelled"
@@ -359,23 +363,41 @@ def cancel_reservation(reservations_path: Path, reservation_id: str) -> bool:
     return changed
 
 
-def auto_status_transitions(reservations_path: Path, local_now: datetime, check_in_time: str, check_out_time: str) -> None:
+def auto_status_transitions(reservations_path: Path, hotel_tz: ZoneInfo, check_in_time: str, check_out_time: str) -> None:
+    """
+    Automatically transition reservation statuses based on hotel local time.
+    
+    Args:
+        reservations_path: Path to reservations file
+        hotel_tz: Hotel's configured timezone
+        check_in_time: Check-in time as "HH:MM" string
+        check_out_time: Check-out time as "HH:MM" string
+    """
     # Parse times
     in_hour, in_minute = map(int, check_in_time.split(':'))
     out_hour, out_minute = map(int, check_out_time.split(':'))
+    
+    # Get current time in hotel timezone
+    now_hotel_time = now_utc().astimezone(hotel_tz)
+    now_utc_time = now_utc()
 
     existing = list_reservations(reservations_path)
     changed = False
     for r in existing:
-        ci = _parse_date(r.check_in_date).replace(hour=in_hour, minute=in_minute, second=0, microsecond=0)
-        co = _parse_date(r.check_out_date).replace(hour=out_hour, minute=out_minute, second=0, microsecond=0)
-        if r.status == "Confirmed" and local_now >= ci:
+        # Parse check-in/check-out dates and combine with times in hotel timezone
+        ci_date = datetime.strptime(r.check_in_date, "%Y-%m-%d").date()
+        co_date = datetime.strptime(r.check_out_date, "%Y-%m-%d").date()
+        
+        ci = datetime.combine(ci_date, time(in_hour, in_minute, 0)).replace(tzinfo=hotel_tz)
+        co = datetime.combine(co_date, time(out_hour, out_minute, 0)).replace(tzinfo=hotel_tz)
+        
+        if r.status == "Confirmed" and now_hotel_time >= ci:
             r.status = "Checked-In"
-            r.updated_at = local_now.isoformat(timespec='seconds')
+            r.updated_at = now_utc_time.isoformat(timespec='seconds')
             changed = True
-        if r.status == "Checked-In" and local_now >= co:
+        if r.status == "Checked-In" and now_hotel_time >= co:
             r.status = "Checked-Out"
-            r.updated_at = local_now.isoformat(timespec='seconds')
+            r.updated_at = now_utc_time.isoformat(timespec='seconds')
             changed = True
     if changed:
         rows: List[Dict[str, str]] = []

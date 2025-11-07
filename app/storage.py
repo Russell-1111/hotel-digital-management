@@ -23,11 +23,13 @@ import tempfile
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable, List, Dict
+from zoneinfo import ZoneInfo
 
 from .rooms import AppConfig
+from .timezone_utils import now_utc, get_hotel_tz
 
 
 # ============================================================================
@@ -158,31 +160,41 @@ def backup_now(cfg: AppConfig, fps: FilePaths | None = None):
         backend.backup_db(cfg)
     else:
         # Use CSV backup (legacy)
+        hotel_tz = get_hotel_tz(cfg.timezone)
         fps = fps or ensure_dirs(cfg)
-        timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+        timestamp = now_utc().astimezone(hotel_tz).strftime('%Y%m%d-%H%M%S')
         for csv_path in [fps.rooms, fps.reservations]:
             if csv_path.exists():
                 dest = cfg.backup_dir / f"{timestamp}-{csv_path.name}"
                 shutil.copy2(csv_path, dest)
         # Retention by modified time
-        cutoff = datetime.now() - timedelta(days=cfg.backup_retention_days)
+        cutoff = now_utc().astimezone(hotel_tz) - timedelta(days=cfg.backup_retention_days)
         for p in cfg.backup_dir.glob('*.csv'):
             try:
-                mtime = datetime.fromtimestamp(p.stat().st_mtime)
+                mtime = datetime.fromtimestamp(p.stat().st_mtime, tz=timezone.utc).astimezone(hotel_tz)
                 if mtime < cutoff:
                     p.unlink()
             except Exception:
                 continue
 
 
-def _parse_time(hhmm: str) -> datetime:
-    """Parse HH:MM time string to next occurrence datetime."""
-    now = datetime.now()
+def _parse_time(hhmm: str, hotel_tz: ZoneInfo) -> datetime:
+    """
+    Parse HH:MM time string to next occurrence in hotel timezone, return as UTC.
+    
+    Args:
+        hhmm: Time string in HH:MM format (e.g., "02:30")
+        hotel_tz: Hotel's configured timezone
+        
+    Returns:
+        Next occurrence of the time as timezone-aware datetime in UTC
+    """
+    now_hotel = now_utc().astimezone(hotel_tz)
     hour, minute = map(int, hhmm.split(':'))
-    target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    if target <= now:
+    target = now_hotel.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if target <= now_hotel:
         target += timedelta(days=1)
-    return target
+    return target.astimezone(timezone.utc)
 
 
 def start_daily_backup_scheduler(cfg: AppConfig):
@@ -198,10 +210,12 @@ def start_daily_backup_scheduler(cfg: AppConfig):
     Notes:
         Works with both SQLite and CSV backends via backup_now() routing.
     """
+    hotel_tz = get_hotel_tz(cfg.timezone)
+    
     def _runner():
         while True:
-            next_run = _parse_time(cfg.backup_time)
-            sleep_secs = (next_run - datetime.now()).total_seconds()
+            next_run = _parse_time(cfg.backup_time, hotel_tz)
+            sleep_secs = (next_run - now_utc()).total_seconds()
             if sleep_secs > 0:
                 threading.Event().wait(timeout=sleep_secs)
             try:

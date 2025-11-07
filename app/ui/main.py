@@ -4,7 +4,8 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 try:
     # Use the robust subclass that refreshes the popup to avoid arrow glitches
     from app.ui.fixed_dateentry import FixedDateEntry as DateEntry
@@ -24,6 +25,7 @@ from app.reservations import (
     is_room_available,
     auto_status_transitions,
 )
+from app.timezone_utils import now_hotel, get_hotel_tz
 
 
 class App(tk.Tk):
@@ -61,6 +63,13 @@ class App(tk.Tk):
         self._build_reservations()
         self._build_availability()
         self._build_reports()
+        
+        # Add timezone info in footer status bar
+        footer = ttk.Frame(self)
+        footer.pack(side=tk.BOTTOM, fill=tk.X, padx=8, pady=4)
+        tz_label = ttk.Label(footer, text=f"Timezone: {self.cfg.timezone}", 
+                            font=('Segoe UI', 8), foreground='#666')
+        tz_label.pack(side=tk.RIGHT)
 
     def _setup_theme(self):
         """Configure ttk theme and consistent styling."""
@@ -227,14 +236,16 @@ class App(tk.Tk):
             self.after(2000, lambda: self.ops_date_entry.configure(foreground='black'))
             return
         # Apply automatic status transitions before showing lists
+        from ..timezone_utils import get_hotel_tz
+        hotel_tz = get_hotel_tz(self.cfg.timezone)
         auto_status_transitions(
             self.paths.reservations,
-            datetime.now(),
+            hotel_tz,
             self.cfg.check_in_time,
             self.cfg.check_out_time,
         )
-        ins = daily_checkin_list(self.paths.reservations, date_str)
-        outs = daily_checkout_list(self.paths.reservations, date_str)
+        ins = daily_checkin_list(self.paths.reservations, date_str, hotel_tz)
+        outs = daily_checkout_list(self.paths.reservations, date_str, hotel_tz)
         self.ins_list.delete(0, tk.END)
         self.outs_list.delete(0, tk.END)
         for r in ins:
@@ -277,8 +288,10 @@ class App(tk.Tk):
         self.num_guests = tk.StringVar(value="1")
         ttk.Entry(r2, textvariable=self.num_guests, width=6).grid(row=0, column=5)
         
-        # Set default end date to one day after start date
-        tomorrow = datetime.now() + timedelta(days=1)
+        # Set default end date to one day after start date (in hotel timezone)
+        hotel_tz = get_hotel_tz(self.cfg.timezone)
+        today_hotel = now_hotel(hotel_tz)
+        tomorrow = today_hotel + timedelta(days=1)
         self.co_entry.set_date(tomorrow)
 
         # Row 3: Room selection with image preview
@@ -588,8 +601,9 @@ class App(tk.Tk):
         self.av_end_entry.bind('<<DateEntrySelected>>', lambda e: self._validate_date_range(self.av_start_entry, self.av_end_entry, auto_adjust_end=True))
         ttk.Button(frm, text="Check", command=self.refresh_availability).grid(row=0, column=4)
         
-        # Set default end date to one day after start date
-        today = datetime.now()
+        # Set default end date to one day after start date (in hotel timezone)
+        hotel_tz = get_hotel_tz(self.cfg.timezone)
+        today = now_hotel(hotel_tz)
         tomorrow = today + timedelta(days=1)
         self.av_start_entry.set_date(today)
         self.av_end_entry.set_date(tomorrow)
@@ -690,7 +704,10 @@ class App(tk.Tk):
         row = ttk.Frame(revenue_section)
         row.pack(fill=tk.X)
         ttk.Label(row, text="Month (YYYY-MM):").pack(side=tk.LEFT, padx=(0, 8))
-        self.month_var = tk.StringVar(value=datetime.now().strftime('%Y-%m'))
+        # Use hotel timezone for current month display
+        hotel_tz = get_hotel_tz(self.cfg.timezone)
+        current_month = now_hotel(hotel_tz).strftime('%Y-%m')
+        self.month_var = tk.StringVar(value=current_month)
         ttk.Entry(row, textvariable=self.month_var, width=10).pack(side=tk.LEFT, padx=(0, 8))
         ttk.Button(row, text="Compute Revenue", command=self.refresh_revenue).pack(side=tk.LEFT)
 
@@ -710,8 +727,8 @@ class App(tk.Tk):
         input_row.pack(fill=tk.X, pady=(0, 8))
         
         ttk.Label(input_row, text="Start Date (YYYY-MM-DD):").pack(side=tk.LEFT, padx=(0, 8))
-        # Default to first day of current month
-        today = datetime.now()
+        # Default to first day of current month (in hotel timezone)
+        today = now_hotel(hotel_tz)
         first_day = today.replace(day=1)
         self.start_date_entry = DateEntry(input_row, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
         self.start_date_entry.set_date(first_day)

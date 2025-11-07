@@ -34,7 +34,8 @@ def temp_cfg(tmp_path: Path) -> AppConfig:
         backup_retention_days=7,
         service_charge_rate=0.10,
         tax_rate=0.06,
-        currency="MYR"
+        currency="MYR",
+        timezone="Asia/Kuala_Lumpur"
     )
 
 

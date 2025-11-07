@@ -1,14 +1,26 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict
+from zoneinfo import ZoneInfo
 
 from .reservations import list_reservations, Reservation
+from .timezone_utils import now_hotel, to_hotel_tz
 
 
-def daily_checkin_list(reservations_path: Path, date_str: str) -> List[Reservation]:
-    """Return check-ins for a given date, excluding invalid reservations where check-in >= check-out."""
+def daily_checkin_list(reservations_path: Path, date_str: str, hotel_tz: ZoneInfo) -> List[Reservation]:
+    """
+    Return check-ins for a given date, excluding invalid reservations where check-in >= check-out.
+    
+    Args:
+        reservations_path: Path to reservations file
+        date_str: Date in YYYY-MM-DD format (interpreted as midnight in hotel timezone)
+        hotel_tz: ZoneInfo object for hotel timezone
+        
+    Returns:
+        List of Reservation objects with check-in on the specified date
+    """
     rs = list_reservations(reservations_path)
     valid = []
     for r in rs:
@@ -20,8 +32,18 @@ def daily_checkin_list(reservations_path: Path, date_str: str) -> List[Reservati
     return valid
 
 
-def daily_checkout_list(reservations_path: Path, date_str: str) -> List[Reservation]:
-    """Return check-outs for a given date, excluding invalid reservations where check-in >= check-out."""
+def daily_checkout_list(reservations_path: Path, date_str: str, hotel_tz: ZoneInfo) -> List[Reservation]:
+    """
+    Return check-outs for a given date, excluding invalid reservations where check-in >= check-out.
+    
+    Args:
+        reservations_path: Path to reservations file
+        date_str: Date in YYYY-MM-DD format (interpreted as midnight in hotel timezone)
+        hotel_tz: ZoneInfo object for hotel timezone
+        
+    Returns:
+        List of Reservation objects with check-out on the specified date
+    """
     rs = list_reservations(reservations_path)
     valid = []
     for r in rs:
@@ -44,7 +66,21 @@ def monthly_revenue_summary(reservations_path: Path, year_month: str) -> float:
 
 
 def compute_nights(check_in_date: str, check_out_date: str) -> int:
-    """Compute number of nights from check-in to check-out date."""
+    """
+    Compute number of nights from check-in to check-out date.
+    
+    Args:
+        check_in_date: Date in YYYY-MM-DD format
+        check_out_date: Date in YYYY-MM-DD format
+        
+    Returns:
+        Number of nights (days difference)
+        
+    Note:
+        Uses naive datetime objects since we only need date difference,
+        not timezone-aware calculations. Date strings are already in
+        hotel timezone from the UI.
+    """
     start = datetime.strptime(check_in_date, "%Y-%m-%d")
     end = datetime.strptime(check_out_date, "%Y-%m-%d")
     return (end - start).days

@@ -21,11 +21,13 @@ import shutil
 import sqlite3
 import tempfile
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 from .rooms import AppConfig
+from .timezone_utils import now_utc, get_hotel_tz, naive_to_aware_utc
 
 logger = logging.getLogger(__name__)
 
@@ -83,10 +85,16 @@ def init_schema(conn: sqlite3.Connection) -> None:
     # Schema metadata table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS schema_info (
-            version INTEGER PRIMARY KEY,
-            migrated_at TEXT NOT NULL
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         )
     """)
+    
+    # Initialize version if not exists
+    conn.execute("""
+        INSERT OR IGNORE INTO schema_info (key, value)
+        VALUES ('version', ?)
+    """, (str(SCHEMA_VERSION),))
     
     # Rooms table
     conn.execute("""
@@ -123,11 +131,11 @@ def init_schema(conn: sqlite3.Connection) -> None:
         ON reservations(room_id, start_date, end_date)
     """)
     
-    # Record schema version
+    # Record migration timestamp
     conn.execute("""
-        INSERT OR REPLACE INTO schema_info (version, migrated_at)
-        VALUES (?, ?)
-    """, (SCHEMA_VERSION, datetime.now().isoformat()))
+        INSERT OR REPLACE INTO schema_info (key, value)
+        VALUES ('migrated_at', ?)
+    """, (now_utc().isoformat(),))
     
     logger.info(f"Database schema initialized (version {SCHEMA_VERSION})")
 
@@ -172,6 +180,9 @@ def ensure_db(cfg: AppConfig) -> Path:
         logger.info(f"Creating new database at {db_path}")
         with get_connection(db_path) as conn:
             init_schema(conn)
+    
+    # Run naive timestamp migration if needed (idempotent)
+    migrate_naive_timestamps_to_utc(cfg)
     
     return db_path
 
@@ -265,10 +276,11 @@ def migrate_from_csv(cfg: AppConfig, db_path: Path) -> None:
             
             logger.info(f"✓ Migrated {reservations_migrated} reservations")
             
-            # Record migration timestamp
+            # Record migration timestamp in key-value schema_info table
             conn.execute("""
-                UPDATE schema_info SET migrated_at = ?
-            """, (datetime.now().isoformat(),))
+                INSERT OR REPLACE INTO schema_info (key, value)
+                VALUES ('csv_migrated_at', ?)
+            """, (now_utc().isoformat(),))
             
         # Migration successful - log summary
         logger.info("=" * 60)
@@ -290,6 +302,123 @@ def migrate_from_csv(cfg: AppConfig, db_path: Path) -> None:
         if db_path.exists():
             db_path.unlink()
         raise RuntimeError(f"CSV migration failed: {e}") from e
+
+
+def migrate_naive_timestamps_to_utc(cfg: AppConfig) -> int:
+    """
+    Migrate naive timestamps to timezone-aware UTC timestamps.
+    
+    This function scans all reservation timestamps and converts any naive timestamps
+    (lacking timezone info) to UTC, assuming they were created in the hotel's configured timezone.
+    
+    Args:
+        cfg: Application configuration with timezone setting
+        
+    Returns:
+        Number of timestamps migrated
+        
+    Notes:
+        - Only runs once (stores completion flag in schema_info table)
+        - Assumes naive timestamps are in hotel's current timezone
+        - Logs warnings for timestamps more than 1 year old/future (likely anomalies)
+        - Safe to run multiple times (idempotent)
+    """
+    db_path = cfg.data_dir / 'reservations.db'
+    if not db_path.exists():
+        return 0
+    
+    hotel_tz = get_hotel_tz(cfg.timezone)
+    migrated_count = 0
+    
+    with get_connection(db_path) as conn:
+        # Check if migration already completed
+        result = conn.execute("""
+            SELECT value FROM schema_info WHERE key = 'naive_timestamp_migration_completed'
+        """).fetchone()
+        
+        if result and result['value'] == '1':
+            logger.debug("Naive timestamp migration already completed")
+            return 0
+        
+        logger.info("Starting naive timestamp migration...")
+        logger.info(f"Assuming naive timestamps are in: {cfg.timezone}")
+        
+        # Get all reservations with timestamps
+        reservations = conn.execute("""
+            SELECT id, created_at, updated_at FROM reservations
+        """).fetchall()
+        
+        for res in reservations:
+            res_id = res['id']
+            created_migrated = False
+            updated_migrated = False
+            
+            # Check and migrate created_at
+            if res['created_at']:
+                try:
+                    dt = datetime.fromisoformat(res['created_at'])
+                    if dt.tzinfo is None:
+                        # Naive timestamp - convert to UTC
+                        aware_utc = naive_to_aware_utc(dt, hotel_tz)
+                        new_created = aware_utc.isoformat()
+                        created_migrated = True
+                        
+                        # Warn if timestamp is far in past/future
+                        age_days = (now_utc() - aware_utc).days
+                        if abs(age_days) > 365:
+                            logger.warning(f"Reservation {res_id}: created_at is {age_days} days old - verify timezone assumption")
+                    else:
+                        new_created = res['created_at']
+                except (ValueError, OSError) as e:
+                    logger.error(f"Failed to parse created_at for reservation {res_id}: {e}")
+                    new_created = res['created_at']
+            else:
+                new_created = res['created_at']
+            
+            # Check and migrate updated_at
+            if res['updated_at']:
+                try:
+                    dt = datetime.fromisoformat(res['updated_at'])
+                    if dt.tzinfo is None:
+                        aware_utc = naive_to_aware_utc(dt, hotel_tz)
+                        new_updated = aware_utc.isoformat()
+                        updated_migrated = True
+                        
+                        age_days = (now_utc() - aware_utc).days
+                        if abs(age_days) > 365:
+                            logger.warning(f"Reservation {res_id}: updated_at is {age_days} days old - verify timezone assumption")
+                    else:
+                        new_updated = res['updated_at']
+                except (ValueError, OSError) as e:
+                    logger.error(f"Failed to parse updated_at for reservation {res_id}: {e}")
+                    new_updated = res['updated_at']
+            else:
+                new_updated = res['updated_at']
+            
+            # Update if any timestamp was migrated
+            if created_migrated or updated_migrated:
+                conn.execute("""
+                    UPDATE reservations 
+                    SET created_at = ?, updated_at = ?
+                    WHERE id = ?
+                """, (new_created, new_updated, res_id))
+                migrated_count += 1
+        
+        # Mark migration as completed
+        conn.execute("""
+            INSERT OR REPLACE INTO schema_info (key, value)
+            VALUES ('naive_timestamp_migration_completed', '1')
+        """)
+        
+        conn.commit()
+        
+        if migrated_count > 0:
+            logger.info(f"Timezone migration complete: Migrated {migrated_count} reservations from {cfg.timezone} to UTC")
+            print(f"\n✓ Timezone migration complete: {migrated_count} reservations migrated to UTC\n")
+        else:
+            logger.info("No naive timestamps found - all timestamps already timezone-aware")
+    
+    return migrated_count
 
 
 def read_rooms(cfg: AppConfig) -> List[Dict[str, any]]:
@@ -492,7 +621,7 @@ def update_reservation(cfg: AppConfig, reservation_id: str, updates: Dict[str, a
                     return False
             
             # Build UPDATE query dynamically based on provided fields
-            updates['updated_at'] = datetime.now().isoformat()
+            updates['updated_at'] = now_utc().isoformat()
             
             set_clause = ', '.join([f"{key} = ?" for key in updates.keys()])
             values = list(updates.values()) + [reservation_id]
@@ -594,7 +723,8 @@ def backup_db(cfg: AppConfig) -> None:
         logger.warning(f"WAL checkpoint failed (continuing with backup): {e}")
     
     # Create timestamped backup
-    timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+    hotel_tz = get_hotel_tz(cfg.timezone)
+    timestamp = now_utc().astimezone(hotel_tz).strftime('%Y%m%d-%H%M%S')
     backup_name = f"{timestamp}-reservations.db"
     backup_path = cfg.backup_dir / backup_name
     
@@ -621,10 +751,10 @@ def backup_db(cfg: AppConfig) -> None:
         raise
     
     # Clean up old backups
-    cutoff = datetime.now() - timedelta(days=cfg.backup_retention_days)
+    cutoff = now_utc().astimezone(hotel_tz) - timedelta(days=cfg.backup_retention_days)
     for backup_file in cfg.backup_dir.glob('*-reservations.db'):
         try:
-            mtime = datetime.fromtimestamp(backup_file.stat().st_mtime)
+            mtime = datetime.fromtimestamp(backup_file.stat().st_mtime, tz=timezone.utc).astimezone(hotel_tz)
             if mtime < cutoff:
                 backup_file.unlink()
                 logger.info(f"Deleted old backup: {backup_file}")

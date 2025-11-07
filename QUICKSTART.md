@@ -7,7 +7,7 @@
    cd hotel_digital_management
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1
-   pip install pytest pytest-cov
+   pip install -r requirements.txt
    ```
 
 2. **Run the application:**
@@ -38,10 +38,12 @@
 
 ## Key Files
 
-- `config.ini` - Settings (times, rates, directories)
+- `config.ini` - Settings (times, rates, directories, timezone)
 - `data/rooms.csv` - Room inventory (edit to add rooms)
 - `data/reservations.csv` - Reservation records (auto-managed)
-- `backups/` - Daily backups (auto at 02:30)
+- `backups/` - Daily backups (auto at 02:30 hotel time)
+
+**Important**: The `timezone` setting in `config.ini` must be a valid IANA timezone name (e.g., `Asia/Kuala_Lumpur`). See [List of tz database time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
 
 ## Billing Formula
 

@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from app.reporting import daily_checkin_list, daily_checkout_list, monthly_revenue_summary, guest_reservation_detail_report, compute_nights
 from app.reservations import Reservation
@@ -32,8 +33,9 @@ def seed_reservations(tmp_path: Path):
 
 def test_daily_lists(tmp_path: Path):
     path = seed_reservations(tmp_path)
-    ins = daily_checkin_list(path, "2025-10-24")
-    outs = daily_checkout_list(path, "2025-10-24")
+    hotel_tz = ZoneInfo("Asia/Kuala_Lumpur")
+    ins = daily_checkin_list(path, "2025-10-24", hotel_tz)
+    outs = daily_checkout_list(path, "2025-10-24", hotel_tz)
     assert [r.reservation_id for r in ins] == ["r1"]
     assert [r.reservation_id for r in outs] == ["r2"]
 
