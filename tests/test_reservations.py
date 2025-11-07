@@ -27,8 +27,7 @@ def test_create_reservation(tmp_path: Path):
     cfg = AppConfig(
         data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
         backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR",
-        timezone="Asia/Kuala_Lumpur"
-    )
+        timezone="Asia/Kuala_Lumpur", remember_username=False, last_username="")
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
@@ -62,8 +61,7 @@ def test_prevent_double_booking(tmp_path: Path):
     cfg = AppConfig(
         data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
         backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR",
-        timezone="Asia/Kuala_Lumpur"
-    )
+        timezone="Asia/Kuala_Lumpur", remember_username=False, last_username="")
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
@@ -93,8 +91,7 @@ def test_cancel_reservation(tmp_path: Path):
     cfg = AppConfig(
         data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
         backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR",
-        timezone="Asia/Kuala_Lumpur"
-    )
+        timezone="Asia/Kuala_Lumpur", remember_username=False, last_username="")
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
@@ -129,8 +126,7 @@ def test_modify_reservation_dates(tmp_path: Path):
     cfg = AppConfig(
         data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
         backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR",
-        timezone="Asia/Kuala_Lumpur"
-    )
+        timezone="Asia/Kuala_Lumpur", remember_username=False, last_username="")
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     
@@ -165,8 +161,7 @@ def test_modify_reservation_guest_info(tmp_path: Path):
     cfg = AppConfig(
         data_dir=tmp_path, backup_dir=tmp_path, use_sqlite=False, check_in_time="14:00", check_out_time="11:00",
         backup_time="02:30", backup_retention_days=7, service_charge_rate=0.10, tax_rate=0.06, currency="MYR",
-        timezone="Asia/Kuala_Lumpur"
-    )
+        timezone="Asia/Kuala_Lumpur", remember_username=False, last_username="")
     
     room = Room(room_id="101", room_type="Standard", base_price=100.0)
     

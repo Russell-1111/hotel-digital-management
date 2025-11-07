@@ -77,6 +77,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
         - schema_info table: tracks schema version and migration timestamp
         - rooms table: room inventory with pricing
         - reservations table: guest reservations with status tracking
+        - users table: authentication and role-based access control
         - idx_reservations_availability: index for fast availability queries
         
     Transaction Handling:
@@ -129,6 +130,17 @@ def init_schema(conn: sqlite3.Connection) -> None:
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_reservations_availability
         ON reservations(room_id, start_date, end_date)
+    """)
+    
+    # Users table for authentication and role-based access control
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('admin', 'staff')),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
     """)
     
     # Record migration timestamp

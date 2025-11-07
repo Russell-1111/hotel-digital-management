@@ -29,6 +29,10 @@ DEFAULT_CONFIG = {
         'service_charge_rate': '0.10',
         'tax_rate': '0.06',
         'currency': 'MYR'
+    },
+    'auth': {
+        'remember_username': 'false',
+        'last_username': ''
     }
 }
 
@@ -46,6 +50,8 @@ class AppConfig:
     tax_rate: float
     currency: str
     timezone: str
+    remember_username: bool
+    last_username: str
 
 
 def load_config(config_path: Path) -> AppConfig:
@@ -82,7 +88,9 @@ def load_config(config_path: Path) -> AppConfig:
         service_charge_rate=float(cfg['finance']['service_charge_rate']),
         tax_rate=float(cfg['finance']['tax_rate']),
         currency=cfg['finance']['currency'],
-        timezone=timezone_str
+        timezone=timezone_str,
+        remember_username=cfg.getboolean('auth', 'remember_username', fallback=False),
+        last_username=cfg['auth']['last_username']
     )
 
 

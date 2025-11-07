@@ -15,6 +15,7 @@ except Exception:
 
 from app.rooms import load_config
 from app.storage import ensure_dirs, start_daily_backup_scheduler
+from app.storage_sqlite import ensure_db
 from app.reporting import daily_checkin_list, daily_checkout_list, monthly_revenue_summary, guest_reservation_detail_report, compute_nights
 from app.rooms import load_rooms, index_by_id, load_room_image
 from app.reservations import (
@@ -26,6 +27,359 @@ from app.reservations import (
     auto_status_transitions,
 )
 from app.timezone_utils import now_hotel, get_hotel_tz
+from app import auth
+
+
+class InitialSetupDialog(tk.Toplevel):
+    """Modal dialog for creating the first administrator account."""
+    
+    def __init__(self, parent, db_path: Path):
+        super().__init__(parent)
+        self.db_path = db_path
+        self.admin_created = False
+        
+        self.title("Initial Setup - Create Administrator Account")
+        self.geometry("400x300")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
+        
+        self.protocol("WM_DELETE_WINDOW", self._on_close_attempt)
+        
+        self._build_ui()
+        self.username_entry.focus()
+        
+    def _build_ui(self):
+        """Build the initial setup form."""
+        main_frame = ttk.Frame(self, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(
+            main_frame,
+            text="Welcome! Create your administrator account.",
+            font=('Segoe UI', 11, 'bold')
+        ).pack(pady=(0, 20))
+        
+        ttk.Label(main_frame, text="Username:").pack(anchor=tk.W)
+        self.username_entry = ttk.Entry(main_frame, width=30)
+        self.username_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(main_frame, text="Password (min 8 characters):").pack(anchor=tk.W)
+        password_frame = ttk.Frame(main_frame)
+        password_frame.pack(fill=tk.X, pady=(0, 10))
+        self.password_entry = ttk.Entry(password_frame, width=30, show='*')
+        self.password_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.show_password_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            password_frame,
+            text="Show",
+            variable=self.show_password_var,
+            command=self._toggle_password
+        ).pack(side=tk.LEFT, padx=(5, 0))
+        
+        ttk.Label(main_frame, text="Confirm Password:").pack(anchor=tk.W)
+        self.confirm_entry = ttk.Entry(main_frame, width=30, show='*')
+        self.confirm_entry.pack(fill=tk.X, pady=(0, 15))
+        
+        self.status_label = ttk.Label(main_frame, text="", foreground="red")
+        self.status_label.pack(pady=(0, 10))
+        
+        self.create_btn = ttk.Button(
+            main_frame,
+            text="Create Admin Account",
+            command=self._create_admin
+        )
+        self.create_btn.pack(pady=10)
+        
+        self.username_entry.bind('<Return>', lambda e: self._create_admin())
+        self.password_entry.bind('<Return>', lambda e: self._create_admin())
+        self.confirm_entry.bind('<Return>', lambda e: self._create_admin())
+        
+    def _toggle_password(self):
+        """Toggle password visibility."""
+        if self.show_password_var.get():
+            self.password_entry.config(show='')
+            self.confirm_entry.config(show='')
+        else:
+            self.password_entry.config(show='*')
+            self.confirm_entry.config(show='*')
+    
+    def _create_admin(self):
+        """Validate and create the admin account."""
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get()
+        confirm = self.confirm_entry.get()
+        
+        if not username:
+            self.status_label.config(text="Username cannot be empty", foreground="red")
+            return
+        
+        if len(password) < 8:
+            self.status_label.config(text="Password must be at least 8 characters", foreground="red")
+            return
+        
+        if password != confirm:
+            self.status_label.config(text="Passwords do not match", foreground="red")
+            return
+        
+        try:
+            auth.create_user(self.db_path, username, password, 'admin')
+            self.status_label.config(text="Administrator account created!", foreground="green")
+            self.admin_created = True
+            self.after(1000, self.destroy)
+        except ValueError as e:
+            self.status_label.config(text=str(e), foreground="red")
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to create admin: {e}")
+            self.status_label.config(text="An error occurred. Check logs.", foreground="red")
+    
+    def _on_close_attempt(self):
+        """Handle window close - require admin creation or exit app."""
+        from tkinter import messagebox
+        if not self.admin_created:
+            if messagebox.askyesno("Exit Application", 
+                                   "You must create an admin account to continue.\nExit application?"):
+                self.master.destroy()
+
+
+class LoginDialog(tk.Toplevel):
+    """Modal login dialog displayed on application startup."""
+    
+    def __init__(self, parent, db_path: Path, cfg):
+        super().__init__(parent)
+        self.db_path = db_path
+        self.cfg = cfg
+        self.authenticated = False
+        self.current_user = None
+        self.lockout_job = None
+        
+        self.title("Login - Hotel Digital Management")
+        self.geometry("400x280")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
+        
+        self.protocol("WM_DELETE_WINDOW", self._on_close_attempt)
+        
+        self._build_ui()
+        self._load_remembered_username()
+        self.username_entry.focus()
+        
+    def _build_ui(self):
+        """Build the login form."""
+        main_frame = ttk.Frame(self, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(
+            main_frame,
+            text="Please log in to continue",
+            font=('Segoe UI', 11, 'bold')
+        ).pack(pady=(0, 20))
+        
+        ttk.Label(main_frame, text="Username:").pack(anchor=tk.W)
+        self.username_entry = ttk.Entry(main_frame, width=30)
+        self.username_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(main_frame, text="Password:").pack(anchor=tk.W)
+        password_frame = ttk.Frame(main_frame)
+        password_frame.pack(fill=tk.X, pady=(0, 10))
+        self.password_entry = ttk.Entry(password_frame, width=30, show='*')
+        self.password_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.show_password_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            password_frame,
+            text="Show",
+            variable=self.show_password_var,
+            command=self._toggle_password
+        ).pack(side=tk.LEFT, padx=(5, 0))
+        
+        self.remember_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            main_frame,
+            text="Remember Username",
+            variable=self.remember_var
+        ).pack(anchor=tk.W, pady=(0, 10))
+        
+        self.status_label = ttk.Label(main_frame, text="", foreground="red")
+        self.status_label.pack(pady=(0, 10))
+        
+        self.login_btn = ttk.Button(
+            main_frame,
+            text="Login",
+            command=self._login
+        )
+        self.login_btn.pack(pady=10)
+        
+        self.username_entry.bind('<Return>', lambda e: self._login())
+        self.password_entry.bind('<Return>', lambda e: self._login())
+        
+    def _toggle_password(self):
+        """Toggle password visibility."""
+        if self.show_password_var.get():
+            self.password_entry.config(show='')
+        else:
+            self.password_entry.config(show='*')
+    
+    def _load_remembered_username(self):
+        """Load remembered username from config if enabled."""
+        remember = getattr(self.cfg, 'remember_username', False)
+        last_username = getattr(self.cfg, 'last_username', '')
+        if remember and last_username:
+            self.username_entry.insert(0, last_username)
+            self.remember_var.set(True)
+    
+    def _login(self):
+        """Attempt to authenticate the user."""
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get()
+        
+        if not username or not password:
+            self.status_label.config(text="Please enter username and password", foreground="red")
+            return
+        
+        lockout_remaining = auth.check_lockout(username)
+        if lockout_remaining is not None:
+            self._show_lockout(lockout_remaining)
+            return
+        
+        role = auth.verify_user(self.db_path, username, password)
+        
+        if role is not None:
+            self.current_user = {'username': username, 'role': role}
+            self.authenticated = True
+            self._save_remember_preference(username)
+            self.destroy()
+        else:
+            self.status_label.config(text="Invalid username or password", foreground="red")
+            self.password_entry.delete(0, tk.END)
+            lockout_remaining = auth.check_lockout(username)
+            if lockout_remaining:
+                self._show_lockout(lockout_remaining)
+    
+    def _show_lockout(self, seconds_remaining: int):
+        """Display lockout countdown."""
+        self.login_btn.config(state='disabled')
+        self._update_lockout_countdown(seconds_remaining)
+    
+    def _update_lockout_countdown(self, seconds: int):
+        """Update lockout countdown message."""
+        if seconds > 0:
+            self.status_label.config(
+                text=f"Account locked. Try again in {seconds} seconds.",
+                foreground="red"
+            )
+            self.lockout_job = self.after(1000, self._update_lockout_countdown, seconds - 1)
+        else:
+            self.status_label.config(text="")
+            self.login_btn.config(state='normal')
+    
+    def _save_remember_preference(self, username: str):
+        """Save remember username preference to config."""
+        import configparser
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        
+        if 'auth' not in config:
+            config['auth'] = {}
+        
+        if self.remember_var.get():
+            config['auth']['remember_username'] = 'true'
+            config['auth']['last_username'] = username
+        else:
+            config['auth']['remember_username'] = 'false'
+            config['auth']['last_username'] = ''
+        
+        with open('config.ini', 'w') as f:
+            config.write(f)
+    
+    def _on_close_attempt(self):
+        """Handle window close - exit application."""
+        if not self.authenticated:
+            self.master.destroy()
+
+
+class ChangePasswordDialog(tk.Toplevel):
+    """Dialog for changing the current user's password."""
+    
+    def __init__(self, parent, db_path: Path, username: str):
+        super().__init__(parent)
+        self.db_path = db_path
+        self.username = username
+        
+        self.title("Change Password")
+        self.geometry("400x280")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
+        
+        self._build_ui()
+        self.old_password_entry.focus()
+        
+    def _build_ui(self):
+        """Build the password change form."""
+        main_frame = ttk.Frame(self, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(
+            main_frame,
+            text=f"Change password for: {self.username}",
+            font=('Segoe UI', 10, 'bold')
+        ).pack(pady=(0, 20))
+        
+        ttk.Label(main_frame, text="Old Password:").pack(anchor=tk.W)
+        self.old_password_entry = ttk.Entry(main_frame, width=30, show='*')
+        self.old_password_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(main_frame, text="New Password (min 8 characters):").pack(anchor=tk.W)
+        self.new_password_entry = ttk.Entry(main_frame, width=30, show='*')
+        self.new_password_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(main_frame, text="Confirm New Password:").pack(anchor=tk.W)
+        self.confirm_entry = ttk.Entry(main_frame, width=30, show='*')
+        self.confirm_entry.pack(fill=tk.X, pady=(0, 15))
+        
+        self.status_label = ttk.Label(main_frame, text="", foreground="red")
+        self.status_label.pack(pady=(0, 10))
+        
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack()
+        ttk.Button(btn_frame, text="Change Password", command=self._change_password).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side=tk.LEFT, padx=5)
+        
+        self.old_password_entry.bind('<Return>', lambda e: self._change_password())
+        self.new_password_entry.bind('<Return>', lambda e: self._change_password())
+        self.confirm_entry.bind('<Return>', lambda e: self._change_password())
+    
+    def _change_password(self):
+        """Validate and change password."""
+        old_password = self.old_password_entry.get()
+        new_password = self.new_password_entry.get()
+        confirm = self.confirm_entry.get()
+        
+        if not old_password:
+            self.status_label.config(text="Old password is required", foreground="red")
+            return
+        
+        if len(new_password) < 8:
+            self.status_label.config(text="New password must be at least 8 characters", foreground="red")
+            return
+        
+        if new_password != confirm:
+            self.status_label.config(text="New passwords do not match", foreground="red")
+            return
+        
+        try:
+            success = auth.change_password(self.db_path, self.username, old_password, new_password)
+            
+            if success:
+                self.status_label.config(text="Password changed successfully!", foreground="green")
+                self.after(1000, self.destroy)
+            else:
+                self.status_label.config(text="Incorrect old password", foreground="red")
+                self.old_password_entry.delete(0, tk.END)
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Password change error: {e}")
+            self.status_label.config(text="An error occurred. Check logs.", foreground="red")
 
 
 class App(tk.Tk):
@@ -40,7 +394,47 @@ class App(tk.Tk):
         self._setup_theme()
 
         self.cfg = load_config(Path("config.ini"))
-        self.paths = ensure_dirs(self.cfg)
+        
+        # Initialize storage based on backend configuration
+        if getattr(self.cfg, 'use_sqlite', True):
+            # SQLite backend: ensure_db returns Path to database
+            self.db_path = ensure_db(self.cfg)
+            self.paths = ensure_dirs(self.cfg)  # Still need this for backup_dir, etc.
+        else:
+            # CSV backend: ensure_dirs returns FilePaths
+            self.paths = ensure_dirs(self.cfg)
+            self.db_path = None  # CSV backend doesn't use database
+        
+        # Authentication: Check if initial setup is needed
+        self.current_user = None
+        user_count = auth.get_user_count(self.db_path)
+        
+        if user_count == 0:
+            # Show initial setup dialog
+            setup_dialog = InitialSetupDialog(self, self.db_path)
+            self.wait_window(setup_dialog)
+            
+            if not setup_dialog.admin_created:
+                # User closed setup without creating admin - exit app
+                self.destroy()
+                return
+        
+        # Show login dialog
+        login_dialog = LoginDialog(self, self.db_path, self.cfg)
+        self.wait_window(login_dialog)
+        
+        if not login_dialog.authenticated:
+            # User closed login without authenticating - exit app
+            self.destroy()
+            return
+        
+        # Store authenticated user
+        self.current_user = login_dialog.current_user
+        logging.getLogger(__name__).info(
+            f"User '{self.current_user['username']}' logged in with role '{self.current_user['role']}'"
+        )
+        
+        # Continue with normal initialization
         start_daily_backup_scheduler(self.cfg)
 
         nb = ttk.Notebook(self)
@@ -64,9 +458,14 @@ class App(tk.Tk):
         self._build_availability()
         self._build_reports()
         
-        # Add timezone info in footer status bar
+        # Add timezone info and user info in footer status bar
         footer = ttk.Frame(self)
         footer.pack(side=tk.BOTTOM, fill=tk.X, padx=8, pady=4)
+        user_label = ttk.Label(footer, 
+                               text=f"Logged in as: {self.current_user['username']} ({self.current_user['role']})", 
+                               font=('Segoe UI', 8), foreground='#666')
+        user_label.pack(side=tk.LEFT)
+        ttk.Button(footer, text="Change Password", command=self._show_change_password).pack(side=tk.LEFT, padx=(10, 0))
         tz_label = ttk.Label(footer, text=f"Timezone: {self.cfg.timezone}", 
                             font=('Segoe UI', 8), foreground='#666')
         tz_label.pack(side=tk.RIGHT)
@@ -99,6 +498,34 @@ class App(tk.Tk):
         full_msg = f"{message}\n\nCheck {log_path} for details."
         logging.getLogger(__name__).error(f"{title}: {message}")
         messagebox.showerror(title, full_msg)
+    
+    def _require_admin(self, action_name: str) -> bool:
+        """
+        Check if current user is admin. Show error dialog if not.
+        
+        Args:
+            action_name: Name of the action being attempted (for logging)
+            
+        Returns:
+            True if user is admin, False otherwise
+        """
+        from tkinter import messagebox
+        if self.current_user['role'] != 'admin':
+            messagebox.showerror(
+                "Administrator Required",
+                "This action requires administrator privileges."
+            )
+            logging.getLogger(__name__).warning(
+                f"User '{self.current_user['username']}' (staff) "
+                f"attempted admin action: {action_name}"
+            )
+            return False
+        return True
+    
+    def _show_change_password(self):
+        """Show the change password dialog for the current user."""
+        dialog = ChangePasswordDialog(self, self.db_path, self.current_user['username'])
+        self.wait_window(dialog)
 
     def _validate_date_range(self, start_entry, end_entry, auto_adjust_end=True):
         """
@@ -434,6 +861,10 @@ class App(tk.Tk):
         self.refresh_ops()
 
     def cancel_selected(self):
+        # Check admin privilege
+        if not self._require_admin("Cancel Reservation"):
+            return
+        
         # Get reservation ID from the parallel list
         sel = self.res_list.curselection()
         if not sel:
@@ -785,6 +1216,10 @@ class App(tk.Tk):
         self.refresh_guest_detail_report()
 
     def refresh_revenue(self):
+        # Check admin privilege
+        if not self._require_admin("Export Revenue Report"):
+            return
+        
         ym = self.month_var.get().strip()
         try:
             total = monthly_revenue_summary(self.paths.reservations, ym)

@@ -35,7 +35,9 @@ def temp_cfg(tmp_path: Path) -> AppConfig:
         service_charge_rate=0.10,
         tax_rate=0.06,
         currency="MYR",
-        timezone="Asia/Kuala_Lumpur"
+        timezone="Asia/Kuala_Lumpur",
+        remember_username=False,
+        last_username=""
     )
 
 

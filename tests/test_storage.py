@@ -54,8 +54,7 @@ def test_backup_creation_and_retention(tmp_path: Path):
         service_charge_rate=0.10,
         tax_rate=0.06,
         currency="MYR",
-        timezone="Asia/Kuala_Lumpur"
-    )
+        timezone="Asia/Kuala_Lumpur", remember_username=False, last_username="")
     
     from app.storage import FilePaths
     fps = FilePaths(data_dir, backup_dir, rooms_path, reservations_path)
@@ -99,8 +98,7 @@ def test_ensure_dirs_creates_structure(tmp_path: Path):
         service_charge_rate=0.10,
         tax_rate=0.06,
         currency="MYR",
-        timezone="Asia/Kuala_Lumpur"
-    )
+        timezone="Asia/Kuala_Lumpur", remember_username=False, last_username="")
     
     fps = ensure_dirs(cfg)
     
