@@ -178,8 +178,17 @@ class LoginDialog(tk.Toplevel):
         ).pack(pady=(0, 20))
         
         ttk.Label(main_frame, text="Username:").pack(anchor=tk.W)
-        self.username_entry = ttk.Entry(main_frame, width=30)
-        self.username_entry.pack(fill=tk.X, pady=(0, 10))
+        username_frame = ttk.Frame(main_frame)
+        username_frame.pack(fill=tk.X, pady=(0, 10))
+        self.username_entry = ttk.Entry(username_frame, width=30)
+        self.username_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.clear_username_btn = ttk.Button(
+            username_frame,
+            text="✕",
+            width=3,
+            command=self._clear_username
+        )
+        self.clear_username_btn.pack(side=tk.LEFT, padx=(5, 0))
         
         ttk.Label(main_frame, text="Password:").pack(anchor=tk.W)
         password_frame = ttk.Frame(main_frame)
@@ -221,6 +230,21 @@ class LoginDialog(tk.Toplevel):
         else:
             self.password_entry.config(show='*')
     
+    def _clear_username(self):
+        """Clear the username field and update placeholder."""
+        self.username_entry.delete(0, tk.END)
+        self.username_entry.focus()
+        # Update config to not remember username
+        import configparser
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        if 'auth' not in config:
+            config['auth'] = {}
+        config['auth']['remember_username'] = 'false'
+        config['auth']['last_username'] = ''
+        with open('config.ini', 'w') as f:
+            config.write(f)
+    
     def _load_remembered_username(self):
         """Load remembered username from config if enabled."""
         remember = getattr(self.cfg, 'remember_username', False)
@@ -228,11 +252,47 @@ class LoginDialog(tk.Toplevel):
         if remember and last_username:
             self.username_entry.insert(0, last_username)
             self.remember_var.set(True)
+            # Add visual hint that field is editable
+            self.username_entry.config(foreground='#666666')
+            # Restore normal color on focus/edit
+            def on_focus_in(e):
+                if self.username_entry.get():
+                    self.username_entry.config(foreground='black')
+            def on_key(e):
+                self.username_entry.config(foreground='black')
+            self.username_entry.bind('<FocusIn>', on_focus_in)
+            self.username_entry.bind('<Key>', on_key)
+        else:
+            # Show placeholder hint when empty
+            self._show_placeholder()
+    
+    def _show_placeholder(self):
+        """Show placeholder text in username field."""
+        if not self.username_entry.get():
+            self.username_entry.insert(0, 'Enter your username')
+            self.username_entry.config(foreground='#999999')
+            
+            def on_focus_in(e):
+                if self.username_entry.get() == 'Enter your username':
+                    self.username_entry.delete(0, tk.END)
+                    self.username_entry.config(foreground='black')
+            
+            def on_focus_out(e):
+                if not self.username_entry.get():
+                    self.username_entry.insert(0, 'Enter your username')
+                    self.username_entry.config(foreground='#999999')
+            
+            self.username_entry.bind('<FocusIn>', on_focus_in)
+            self.username_entry.bind('<FocusOut>', on_focus_out)
     
     def _login(self):
         """Attempt to authenticate the user."""
         username = self.username_entry.get().strip()
         password = self.password_entry.get()
+        
+        # Handle placeholder text
+        if username == 'Enter your username':
+            username = ''
         
         if not username or not password:
             self.status_label.config(text="Please enter username and password", foreground="red")
