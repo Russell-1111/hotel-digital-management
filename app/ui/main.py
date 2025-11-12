@@ -29,6 +29,8 @@ from app.reservations import (
 )
 from app.timezone_utils import now_hotel, get_hotel_tz
 from app import auth
+from app.analytics import aggregate_revenue_by_room_type, format_bucket_label
+from app.visualization import generate_and_export_analytics
 
 
 class InitialSetupDialog(tk.Toplevel):
@@ -775,6 +777,189 @@ class CreateUserDialog(tk.Toplevel):
             self.status_label.config(text="An error occurred. Check logs.", foreground="red")
 
 
+class RevenueAnalyticsDialog(tk.Toplevel):
+    """Modal dialog for generating revenue analytics by room type."""
+    
+    def __init__(self, parent, db_path: Path, cfg):
+        super().__init__(parent)
+        self.db_path = db_path
+        self.cfg = cfg
+        
+        self.title("Revenue Analytics by Room Type")
+        self.geometry("550x400")
+        self.resizable(False, False)
+        self.transient(parent)
+        self.grab_set()
+        
+        self._build_ui()
+        
+    def _build_ui(self):
+        """Build the analytics dialog UI."""
+        main_frame = ttk.Frame(self, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Title
+        ttk.Label(
+            main_frame,
+            text="Generate Revenue Analytics",
+            font=('Segoe UI', 11, 'bold')
+        ).pack(pady=(0, 15))
+        
+        # Parameters section
+        params_frame = ttk.LabelFrame(main_frame, text="Analysis Parameters", padding=10)
+        params_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Date range inputs
+        date_frame = ttk.Frame(params_frame)
+        date_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(date_frame, text="Start Date:").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
+        self.start_date_entry = DateEntry(date_frame, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
+        self.start_date_entry.grid(row=0, column=1, padx=(0, 16))
+        
+        ttk.Label(date_frame, text="End Date:").grid(row=0, column=2, sticky=tk.W, padx=(0, 8))
+        self.end_date_entry = DateEntry(date_frame, width=12, date_pattern='yyyy-mm-dd', firstweekday='sunday')
+        self.end_date_entry.grid(row=0, column=3)
+        
+        # Set default dates: first day to last day of current month
+        hotel_tz = get_hotel_tz(self.cfg.timezone)
+        today = now_hotel(hotel_tz)
+        first_day = today.replace(day=1)
+        # Calculate last day of current month
+        if today.month == 12:
+            last_day = today.replace(day=31)
+        else:
+            last_day = (today.replace(month=today.month + 1, day=1) - timedelta(days=1))
+        
+        self.start_date_entry.set_date(first_day)
+        self.end_date_entry.set_date(last_day)
+        
+        # Time bucket selector
+        bucket_frame = ttk.Frame(params_frame)
+        bucket_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(bucket_frame, text="Time Bucket:").pack(side=tk.LEFT, padx=(0, 8))
+        self.time_bucket_var = tk.StringVar(value="monthly")
+        time_bucket_combo = ttk.Combobox(
+            bucket_frame,
+            textvariable=self.time_bucket_var,
+            values=["daily", "weekly", "monthly", "quarterly"],
+            state="readonly",
+            width=15
+        )
+        time_bucket_combo.pack(side=tk.LEFT)
+        
+        # Chart type selector
+        chart_frame = ttk.Frame(params_frame)
+        chart_frame.pack(fill=tk.X)
+        
+        ttk.Label(chart_frame, text="Chart Type:").pack(side=tk.LEFT, padx=(0, 8))
+        self.chart_type_var = tk.StringVar(value="combined")
+        chart_type_combo = ttk.Combobox(
+            chart_frame,
+            textvariable=self.chart_type_var,
+            values=["trend", "bar", "combined"],
+            state="readonly",
+            width=15
+        )
+        chart_type_combo.pack(side=tk.LEFT)
+        
+        # Status label
+        self.status_label = ttk.Label(main_frame, text="", foreground="blue")
+        self.status_label.pack(pady=(0, 10))
+        
+        # Buttons
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack()
+        
+        self.generate_btn = ttk.Button(btn_frame, text="Generate", command=self._generate_analytics)
+        self.generate_btn.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side=tk.LEFT, padx=5)
+    
+    def _generate_analytics(self):
+        """Generate analytics chart and export files."""
+        start_date = self.start_date_entry.get()
+        end_date = self.end_date_entry.get()
+        time_bucket = self.time_bucket_var.get()
+        chart_type = self.chart_type_var.get()
+        
+        # Validate date range
+        if start_date > end_date:
+            from tkinter import messagebox
+            messagebox.showerror(
+                "Invalid Date Range",
+                "Start date must be before or equal to end date."
+            )
+            return
+        
+        # Show progress
+        self.status_label.config(text="Generating analytics...", foreground="blue")
+        self.generate_btn.config(state='disabled')
+        self.update()
+        
+        try:
+            # Aggregate data
+            df = aggregate_revenue_by_room_type(
+                self.db_path,
+                start_date,
+                end_date,
+                time_bucket
+            )
+            
+            # Check if data is empty
+            if df.empty:
+                from tkinter import messagebox
+                messagebox.showinfo(
+                    "No Data",
+                    "No reservation data found for the selected date range and filters.\n\n"
+                    "Try adjusting the date range or check that reservations exist with "
+                    "status Checked-In or Checked-Out."
+                )
+                self.status_label.config(text="")
+                self.generate_btn.config(state='normal')
+                return
+            
+            # Generate and export
+            output_dir = Path("reports")
+            png_path, csv_path = generate_and_export_analytics(
+                df,
+                chart_type,
+                output_dir,
+                time_bucket,
+                start_date,
+                end_date,
+                self.cfg.timezone
+            )
+            
+            # Show success message
+            from tkinter import messagebox
+            messagebox.showinfo(
+                "Success",
+                f"Analytics generated successfully!\n\n"
+                f"Chart: {png_path}\n"
+                f"Data: {csv_path}"
+            )
+            
+            self.status_label.config(text="")
+            self.generate_btn.config(state='normal')
+            
+        except Exception as e:
+            from tkinter import messagebox
+            error_msg = str(e)
+            if "permission" in error_msg.lower() or "write" in error_msg.lower():
+                error_msg = "Unable to write to reports/ directory. Check permissions."
+            
+            messagebox.showerror(
+                "Analytics Error",
+                f"{error_msg}\n\nCheck logs/app.log for details."
+            )
+            logging.getLogger(__name__).error(f"Analytics generation error: {e}", exc_info=True)
+            
+            self.status_label.config(text="")
+            self.generate_btn.config(state='normal')
+
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -930,6 +1115,11 @@ class App(tk.Tk):
         if not self._require_admin("manage users"):
             return
         dialog = UserManagementDialog(self, self.db_path, self.current_user)
+        self.wait_window(dialog)
+
+    def _show_revenue_analytics(self):
+        """Show the revenue analytics dialog."""
+        dialog = RevenueAnalyticsDialog(self, self.db_path, self.cfg)
         self.wait_window(dialog)
 
     def _validate_date_range(self, start_entry, end_entry, auto_adjust_end=True):
@@ -1616,6 +1806,23 @@ class App(tk.Tk):
         ttk.Label(total_frame, text="Grand Total:", font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT, padx=(0, 8))
         self.grand_total_var = tk.StringVar(value="MYR 0.00")
         ttk.Label(total_frame, textvariable=self.grand_total_var, font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT)
+
+        # Revenue Analytics Section
+        analytics_section = ttk.LabelFrame(self.report_frame, text="Analytics", padding=8)
+        analytics_section.pack(fill=tk.X, padx=8, pady=8)
+        
+        analytics_desc = ttk.Label(
+            analytics_section,
+            text="Generate visual revenue analytics by room type with configurable time periods.",
+            font=("Segoe UI", 9)
+        )
+        analytics_desc.pack(pady=(0, 8))
+        
+        ttk.Button(
+            analytics_section,
+            text="Revenue by Room Type",
+            command=self._show_revenue_analytics
+        ).pack()
 
         # Initial load
         self.refresh_guest_detail_report()

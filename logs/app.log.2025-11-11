@@ -1,0 +1,16 @@
+2025-11-11 10:46:52,119 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-11 10:46:52,673 INFO [app.ui.main] UI initializing
+2025-11-11 10:47:13,666 INFO [app.auth] User 'Russell Hong Jian An' authenticated successfully
+2025-11-11 10:47:13,692 INFO [app.ui.main] User 'Russell Hong Jian An' logged in with role 'admin'
+2025-11-11 10:47:30,076 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-11 10:47:30,142 INFO [app.ui.main] UI initializing
+2025-11-11 10:47:41,858 INFO [app.auth] User 'Cherish' authenticated successfully
+2025-11-11 10:47:41,885 INFO [app.ui.main] User 'Cherish' logged in with role 'staff'
+2025-11-11 10:47:44,223 WARNING [app.ui.main] User 'Cherish' (staff) attempted admin action: Export Revenue Report
+2025-11-11 10:51:29,527 WARNING [app.ui.main] User 'Cherish' (staff) attempted admin action: Export Revenue Report
+2025-11-11 11:02:25,742 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-11 11:02:25,796 INFO [app.ui.main] UI initializing
+2025-11-11 11:02:44,217 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-11 11:02:44,266 INFO [app.ui.main] UI initializing
+2025-11-11 11:03:08,827 INFO [app.auth] User 'Russell Hong Jian An' authenticated successfully
+2025-11-11 11:03:08,839 INFO [app.ui.main] User 'Russell Hong Jian An' logged in with role 'admin'
