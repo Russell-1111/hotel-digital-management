@@ -15,7 +15,7 @@ except Exception:
     from tkcalendar import DateEntry
 
 from app.rooms import load_config
-from app.storage import ensure_dirs, start_daily_backup_scheduler
+from app.storage import start_daily_backup_scheduler
 from app.storage_sqlite import ensure_db
 from app.reporting import daily_checkin_list, daily_checkout_list, monthly_revenue_summary, guest_reservation_detail_report, compute_nights
 from app.rooms import load_rooms, index_by_id, load_room_image
@@ -973,15 +973,8 @@ class App(tk.Tk):
 
         self.cfg = load_config(Path("config.ini"))
         
-        # Initialize storage based on backend configuration
-        if getattr(self.cfg, 'use_sqlite', True):
-            # SQLite backend: ensure_db returns Path to database
-            self.db_path = ensure_db(self.cfg)
-            self.paths = ensure_dirs(self.cfg)  # Still need this for backup_dir, etc.
-        else:
-            # CSV backend: ensure_dirs returns FilePaths
-            self.paths = ensure_dirs(self.cfg)
-            self.db_path = None  # CSV backend doesn't use database
+        # Initialize SQLite database
+        self.db_path = ensure_db(self.cfg)
         
         # Authentication: Check if initial setup is needed
         self.current_user = None
@@ -1028,7 +1021,7 @@ class App(tk.Tk):
         nb.add(self.report_frame, text="Reports")
 
         # Cache rooms
-        self.rooms = load_rooms(self.paths.rooms)
+        self.rooms = load_rooms(self.cfg)
         self.rooms_by_id = index_by_id(self.rooms)
 
         self._build_ops()

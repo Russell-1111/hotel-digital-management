@@ -1,5 +1,0 @@
-room_id,room_type,base_price,image_path
-101,Standard,120.00,images/rooms/101.png
-102,Deluxe,180.00,images/rooms/102.png
-103,Standard,120.00,images/rooms/103.png
-104,Suite,250.00,images/rooms/104.png

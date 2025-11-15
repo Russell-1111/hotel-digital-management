@@ -107,14 +107,19 @@ class Room:
     image_path: str = ""  # Relative path to room image (e.g., "images/rooms/101.png")
 
 
-def load_rooms(path: Path) -> List[Room]:
-    from .storage import read_csv
-    rows = read_csv(path)
-    required = {"room_id", "room_type", "base_price"}
-    if rows:
-        missing = required - set(rows[0].keys())
-        if missing:
-            raise ValueError(f"rooms.csv missing columns: {missing}")
+def load_rooms(cfg: AppConfig) -> List[Room]:
+    """
+    Load rooms from SQLite database.
+    
+    Args:
+        cfg: Application configuration
+        
+    Returns:
+        List of Room objects
+    """
+    from . import storage_sqlite
+    rows = storage_sqlite.read_rooms(cfg)
+    
     result: List[Room] = []
     for r in rows:
         result.append(Room(

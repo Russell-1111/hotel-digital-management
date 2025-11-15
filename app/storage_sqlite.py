@@ -14,7 +14,6 @@ Key Features:
 """
 
 from __future__ import annotations
-import csv
 import logging
 import os
 import shutil
@@ -165,29 +164,11 @@ def ensure_db(cfg: AppConfig) -> Path:
     Side Effects:
         - Creates data directory if missing
         - Initializes schema if database is new
-        - Triggers CSV migration if CSV files exist but DB doesn't
-        
-    Migration Logic:
-        1. If reservations.db exists → return path
-        2. If reservations.db missing but CSVs exist → migrate CSVs to DB
-        3. If both missing → create empty DB with schema
     """
     cfg.data_dir.mkdir(parents=True, exist_ok=True)
     db_path = cfg.data_dir / 'reservations.db'
     
-    # Check if we need to migrate from CSV
-    csv_rooms = cfg.data_dir / 'rooms.csv'
-    csv_reservations = cfg.data_dir / 'reservations.csv'
-    needs_migration = (
-        not db_path.exists() and 
-        csv_rooms.exists() and 
-        csv_reservations.exists()
-    )
-    
-    if needs_migration:
-        logger.info("Detected CSV files without database - starting migration...")
-        migrate_from_csv(cfg, db_path)
-    elif not db_path.exists():
+    if not db_path.exists():
         # Create new empty database
         logger.info(f"Creating new database at {db_path}")
         with get_connection(db_path) as conn:
@@ -197,123 +178,6 @@ def ensure_db(cfg: AppConfig) -> Path:
     migrate_naive_timestamps_to_utc(cfg)
     
     return db_path
-
-
-def migrate_from_csv(cfg: AppConfig, db_path: Path) -> None:
-    """
-    Migrate data from CSV files to SQLite database.
-    
-    Args:
-        cfg: Application configuration
-        db_path: Target database path
-        
-    Side Effects:
-        - Creates new SQLite database
-        - Preserves original CSV files (does not delete)
-        - Logs migration summary to console and file
-        
-    Transaction Handling:
-        Entire migration runs in a single transaction - either all data migrates
-        or none (rollback on any error)
-        
-    Error Handling:
-        - Invalid data rows are logged and skipped
-        - Critical errors (schema creation) abort migration and clean up partial DB
-        - Original CSV files are never modified
-    """
-    csv_rooms = cfg.data_dir / 'rooms.csv'
-    csv_reservations = cfg.data_dir / 'reservations.csv'
-    
-    logger.info("=" * 60)
-    logger.info("CSV TO SQLITE MIGRATION")
-    logger.info("=" * 60)
-    
-    try:
-        with get_connection(db_path) as conn:
-            # Initialize schema within transaction
-            init_schema(conn)
-            
-            # Migrate rooms
-            rooms_migrated = 0
-            logger.info(f"Reading rooms from {csv_rooms}")
-            with csv_rooms.open('r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    try:
-                        conn.execute("""
-                            INSERT INTO rooms (room_id, room_type, base_price, image_path)
-                            VALUES (?, ?, ?, ?)
-                        """, (
-                            row['room_id'],
-                            row['room_type'],
-                            float(row['base_price']),
-                            row.get('image_path', '')
-                        ))
-                        rooms_migrated += 1
-                    except Exception as e:
-                        logger.warning(f"Skipping invalid room row: {row} - Error: {e}")
-            
-            logger.info(f"✓ Migrated {rooms_migrated} rooms")
-            
-            # Migrate reservations
-            reservations_migrated = 0
-            logger.info(f"Reading reservations from {csv_reservations}")
-            with csv_reservations.open('r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    try:
-                        conn.execute("""
-                            INSERT INTO reservations (
-                                id, room_id, guest_name, guest_phone, guest_email,
-                                start_date, end_date, num_guests, status,
-                                total_cost, created_at, updated_at
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            row['reservation_id'],
-                            row['room_id'],
-                            row['guest_name'],
-                            row['phone'],
-                            row['email'],
-                            row['check_in_date'],
-                            row['check_out_date'],
-                            int(row['num_guests']),
-                            row['status'],
-                            float(row['total_cost']),
-                            row['created_at'],
-                            row['updated_at']
-                        ))
-                        reservations_migrated += 1
-                    except Exception as e:
-                        logger.warning(f"Skipping invalid reservation row: {row} - Error: {e}")
-            
-            logger.info(f"✓ Migrated {reservations_migrated} reservations")
-            
-            # Record migration timestamp in key-value schema_info table
-            conn.execute("""
-                INSERT OR REPLACE INTO schema_info (key, value)
-                VALUES ('csv_migrated_at', ?)
-            """, (now_utc().isoformat(),))
-            
-        # Migration successful - log summary
-        logger.info("=" * 60)
-        logger.info(f"MIGRATION COMPLETE")
-        logger.info(f"  Rooms: {rooms_migrated}")
-        logger.info(f"  Reservations: {reservations_migrated}")
-        logger.info(f"  Database: {db_path}")
-        logger.info(f"  Original CSV files preserved in {cfg.data_dir}")
-        logger.info("=" * 60)
-        
-        # Print to console as well
-        print(f"\n✓ Migration complete: {rooms_migrated} rooms, {reservations_migrated} reservations")
-        print(f"  Database created at: {db_path}")
-        print(f"  Original CSV files preserved\n")
-        
-    except Exception as e:
-        logger.error(f"Migration failed: {e}", exc_info=True)
-        # Clean up partial database
-        if db_path.exists():
-            db_path.unlink()
-        raise RuntimeError(f"CSV migration failed: {e}") from e
 
 
 def migrate_naive_timestamps_to_utc(cfg: AppConfig) -> int:
@@ -774,97 +638,4 @@ def backup_db(cfg: AppConfig) -> None:
             logger.warning(f"Failed to delete old backup {backup_file}: {e}")
 
 
-def export_csv(cfg: AppConfig, output_dir: Optional[Path] = None) -> None:
-    """
-    Export current database state to CSV files.
-    
-    Args:
-        cfg: Application configuration
-        output_dir: Target directory for CSV files (defaults to cfg.data_dir)
-        
-    Side Effects:
-        - Creates/overwrites rooms.csv and reservations.csv
-        - Uses atomic writes (temp file + rename)
-        
-    Output Files:
-        - rooms.csv: room_id, room_type, base_price, image_path
-        - reservations.csv: reservation_id, room_id, guest_name, phone, email,
-                           check_in_date, check_out_date, num_guests, status,
-                           total_cost, created_at, updated_at
-        
-    Use Cases:
-        - Legacy compatibility
-        - Data export for reporting
-        - Backup in human-readable format
-    """
-    if output_dir is None:
-        output_dir = cfg.data_dir
-    
-    output_dir.mkdir(parents=True, exist_ok=True)
-    db_path = ensure_db(cfg)
-    
-    logger.info(f"Exporting database to CSV files in {output_dir}")
-    
-    # Export rooms
-    rooms_path = output_dir / 'rooms.csv'
-    with get_connection(db_path) as conn:
-        cursor = conn.execute("SELECT room_id, room_type, base_price, image_path FROM rooms ORDER BY room_id")
-        rows = cursor.fetchall()
-        
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            delete=False,
-            dir=str(output_dir),
-            newline='',
-            encoding='utf-8'
-        ) as tmp:
-            writer = csv.writer(tmp)
-            writer.writerow(['room_id', 'room_type', 'base_price', 'image_path'])
-            for row in rows:
-                writer.writerow([row['room_id'], row['room_type'], row['base_price'], row['image_path']])
-            tmp_path = tmp.name
-        
-        os.replace(tmp_path, rooms_path)
-        logger.info(f"Exported {len(rows)} rooms to {rooms_path}")
-    
-    # Export reservations
-    reservations_path = output_dir / 'reservations.csv'
-    with get_connection(db_path) as conn:
-        cursor = conn.execute("""
-            SELECT id, room_id, guest_name, guest_phone, guest_email,
-                   start_date, end_date, num_guests, status,
-                   total_cost, created_at, updated_at
-            FROM reservations
-            ORDER BY created_at
-        """)
-        rows = cursor.fetchall()
-        
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            delete=False,
-            dir=str(output_dir),
-            newline='',
-            encoding='utf-8'
-        ) as tmp:
-            writer = csv.writer(tmp)
-            writer.writerow([
-                'reservation_id', 'room_id', 'guest_name', 'phone', 'email',
-                'check_in_date', 'check_out_date', 'num_guests', 'status',
-                'total_cost', 'created_at', 'updated_at'
-            ])
-            for row in rows:
-                writer.writerow([
-                    row['id'], row['room_id'], row['guest_name'],
-                    row['guest_phone'], row['guest_email'],
-                    row['start_date'], row['end_date'], row['num_guests'],
-                    row['status'], f"{row['total_cost']:.2f}",
-                    row['created_at'], row['updated_at']
-                ])
-            tmp_path = tmp.name
-        
-        os.replace(tmp_path, reservations_path)
-        logger.info(f"Exported {len(rows)} reservations to {reservations_path}")
-    
-    print(f"\n✓ Export complete: {rooms_path.parent}")
-    print(f"  - rooms.csv: {len(rows)} rooms")
-    print(f"  - reservations.csv: {len(rows)} reservations\n")
+
