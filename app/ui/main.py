@@ -1266,8 +1266,10 @@ class App(tk.Tk):
             self.cfg.check_in_time,
             self.cfg.check_out_time,
         )
-        ins = daily_checkin_list(self.paths.reservations, date_str, hotel_tz)
-        outs = daily_checkout_list(self.paths.reservations, date_str, hotel_tz)
+        # Use db_path if SQLite, otherwise paths.reservations for CSV
+        path = self.db_path if self.db_path else self.paths.reservations
+        ins = daily_checkin_list(path, date_str, hotel_tz)
+        outs = daily_checkout_list(path, date_str, hotel_tz)
         self.ins_list.delete(0, tk.END)
         self.outs_list.delete(0, tk.END)
         for r in ins:
@@ -1351,7 +1353,9 @@ class App(tk.Tk):
         self.res_list.delete(0, tk.END)
         # Store reservation IDs separately for modify/cancel operations
         self.res_list_ids = []
-        for r in list_reservations(self.paths.reservations):
+        # Use db_path if SQLite, otherwise paths.reservations for CSV
+        path = self.db_path if self.db_path else self.paths.reservations
+        for r in list_reservations(path, self.cfg):
             self.res_list.insert(tk.END, f"Room {r.room_id} | {r.guest_name} | {r.check_in_date}->{r.check_out_date} | {r.status} | MYR {r.total_cost:.2f}")
             self.res_list_ids.append(r.reservation_id)
 
@@ -1380,7 +1384,9 @@ class App(tk.Tk):
             self.room_choice.set('')
             return
         
-        reservations = list_reservations(self.paths.reservations)
+        # Use db_path if SQLite, otherwise paths.reservations for CSV
+        path = self.db_path if self.db_path else self.paths.reservations
+        reservations = list_reservations(path, self.cfg)
         avail = []
         for room in self.rooms:
             if is_room_available(reservations, room.room_id, ci, co):
@@ -1437,9 +1443,11 @@ class App(tk.Tk):
             self._show_error("Validation Error", "Number of guests must be a valid integer.")
             return
         try:
+            # Use db_path if SQLite, otherwise paths.reservations for CSV
+            path = self.db_path if self.db_path else self.paths.reservations
             create_reservation(
                 self.cfg,
-                self.paths.reservations,
+                path,
                 room,
                 self.guest_name.get().strip(),
                 self.guest_phone.get().strip(),
@@ -1467,7 +1475,9 @@ class App(tk.Tk):
         idx = sel[0]
         rid = self.res_list_ids[idx]
         try:
-            cancel_reservation(self.paths.reservations, rid)
+            # Use db_path if SQLite, otherwise paths.reservations for CSV
+            path = self.db_path if self.db_path else self.paths.reservations
+            cancel_reservation(path, rid, self.cfg)
         except Exception as e:
             self._show_error("Cancellation Error", f"Failed to cancel reservation: {str(e)}")
             return
@@ -1483,7 +1493,9 @@ class App(tk.Tk):
         rid = self.res_list_ids[idx]
         
         # Find the reservation
-        reservations = list_reservations(self.paths.reservations)
+        # Use db_path if SQLite, otherwise paths.reservations for CSV
+        path = self.db_path if self.db_path else self.paths.reservations
+        reservations = list_reservations(path, self.cfg)
         target = next((r for r in reservations if r.reservation_id == rid), None)
         if not target or target.status in {"Cancelled", "Checked-Out"}:
             return
@@ -1545,8 +1557,11 @@ class App(tk.Tk):
                 mod_room_combo['values'] = []
                 mod_room_var.set('')
                 return
+            # Get fresh reservations using correct path
+            path = self.db_path if self.db_path else self.paths.reservations
+            all_reservations = list_reservations(path, self.cfg)
             # Exclude current reservation from availability check
-            others = [r for r in reservations if r.reservation_id != rid]
+            others = [r for r in all_reservations if r.reservation_id != rid]
             avail = []
             for room in self.rooms:
                 if is_room_available(others, room.room_id, ci, co):
@@ -1589,9 +1604,11 @@ class App(tk.Tk):
                     new_room = self.rooms_by_id.get(room_id)
 
             try:
+                # Use db_path if SQLite, otherwise paths.reservations for CSV
+                res_path = self.db_path if self.db_path else self.paths.reservations
                 modify_reservation(
                     self.cfg,
-                    self.paths.reservations,
+                    res_path,
                     rid,
                     new_room=new_room,
                     new_check_in=new_ci if new_ci != target.check_in_date else None,
@@ -1673,7 +1690,9 @@ class App(tk.Tk):
         for widget in self.av_scrollable_frame.winfo_children():
             widget.destroy()
         
-        reservations = list_reservations(self.paths.reservations)
+        # Use db_path if SQLite, otherwise paths.reservations for CSV
+        path = self.db_path if self.db_path else self.paths.reservations
+        reservations = list_reservations(path, self.cfg)
         
         # Create a row for each room with image and status
         for idx, room in enumerate(self.rooms):
@@ -1834,7 +1853,9 @@ class App(tk.Tk):
         
         ym = self.month_var.get().strip()
         try:
-            total = monthly_revenue_summary(self.paths.reservations, ym)
+            # Use db_path if SQLite, otherwise paths.reservations for CSV
+            path = self.db_path if self.db_path else self.paths.reservations
+            total = monthly_revenue_summary(path, ym)
             self.revenue_var.set(f"MYR {total:.2f}")
         except Exception as e:
             self._show_error("Revenue Error", f"Failed to compute revenue: {str(e)}")
@@ -1849,8 +1870,11 @@ class App(tk.Tk):
             for item in self.detail_tree.get_children():
                 self.detail_tree.delete(item)
             
-            # Get filtered reservations
-            reservations = guest_reservation_detail_report(self.paths.reservations, start, end)
+            # Get filtered reservations - use db_path if SQLite, otherwise paths.reservations
+            if self.db_path:
+                reservations = guest_reservation_detail_report(self.db_path, start, end)
+            else:
+                reservations = guest_reservation_detail_report(self.paths.reservations, start, end)
             
             # Populate table
             grand_total = 0.0

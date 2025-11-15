@@ -124,8 +124,45 @@ def _overlaps(a_start: datetime, a_end: datetime, b_start: datetime, b_end: date
     return max(a_start, b_start) < min(a_end, b_end)
 
 
-def list_reservations(path: Path) -> List[Reservation]:
-    rows = read_csv(path)
+def list_reservations(path: Path, cfg: Optional[AppConfig] = None) -> List[Reservation]:
+    """
+    List all reservations from storage.
+    
+    Args:
+        path: Path to CSV file or SQLite database
+        cfg: Optional AppConfig. Required when path is a SQLite database (.db file)
+        
+    Returns:
+        List of Reservation objects
+    """
+    # Check if path is a SQLite database or CSV file
+    if path.suffix == '.db':
+        if cfg is None:
+            raise ValueError("cfg parameter is required when reading from SQLite database")
+        # Import here to avoid circular dependency
+        from . import storage_sqlite
+        rows = storage_sqlite.read_reservations(cfg)
+        # Normalize SQLite field names to match CSV format
+        normalized_rows = []
+        for r in rows:
+            normalized_rows.append({
+                'reservation_id': r.get('id', r.get('reservation_id', '')),
+                'room_id': r['room_id'],
+                'guest_name': r['guest_name'],
+                'phone': r.get('guest_phone', r.get('phone', '')),
+                'email': r.get('guest_email', r.get('email', '')),
+                'check_in_date': r.get('start_date', r.get('check_in_date', '')),
+                'check_out_date': r.get('end_date', r.get('check_out_date', '')),
+                'num_guests': r['num_guests'],
+                'status': r['status'],
+                'total_cost': r['total_cost'],
+                'created_at': r['created_at'],
+                'updated_at': r['updated_at']
+            })
+        rows = normalized_rows
+    else:
+        rows = read_csv(path)
+    
     res: List[Reservation] = []
     for r in rows:
         res.append(Reservation(
@@ -180,7 +217,7 @@ def create_reservation(cfg: AppConfig, reservations_path: Path, room: Room, gues
         raise ValueError("Check-in date must be before check-out date")
     
     # Read existing
-    existing = list_reservations(reservations_path)
+    existing = list_reservations(reservations_path, cfg)
     if not is_room_available(existing, room.room_id, check_in_date, check_out_date):
         raise ValueError("Room not available for the selected dates")
 
@@ -203,24 +240,43 @@ def create_reservation(cfg: AppConfig, reservations_path: Path, room: Room, gues
         updated_at=now,
     )
 
-    # Persist with atomic write
-    rows: List[Dict[str, str]] = []
-    for r in existing + [new]:
-        rows.append({
-            "reservation_id": r.reservation_id,
-            "room_id": r.room_id,
-            "guest_name": r.guest_name,
-            "phone": r.phone,
-            "email": r.email,
-            "check_in_date": r.check_in_date,
-            "check_out_date": r.check_out_date,
-            "num_guests": str(r.num_guests),
-            "status": r.status,
-            "total_cost": f"{r.total_cost:.2f}",
-            "created_at": r.created_at,
-            "updated_at": r.updated_at,
-        })
-    write_csv_atomic(reservations_path, FIELDNAMES, rows)
+    # Persist with atomic write - use SQLite or CSV based on path
+    if reservations_path.suffix == '.db':
+        from . import storage_sqlite
+        reservation_dict = {
+            'id': new.reservation_id,
+            'room_id': new.room_id,
+            'guest_name': new.guest_name,
+            'guest_phone': new.phone,
+            'guest_email': new.email,
+            'start_date': new.check_in_date,
+            'end_date': new.check_out_date,
+            'num_guests': new.num_guests,
+            'status': new.status,
+            'total_cost': new.total_cost,
+            'created_at': new.created_at,
+            'updated_at': new.updated_at,
+        }
+        if not storage_sqlite.write_reservation(cfg, reservation_dict):
+            raise ValueError("Failed to write reservation to database")
+    else:
+        rows: List[Dict[str, str]] = []
+        for r in existing + [new]:
+            rows.append({
+                "reservation_id": r.reservation_id,
+                "room_id": r.room_id,
+                "guest_name": r.guest_name,
+                "phone": r.phone,
+                "email": r.email,
+                "check_in_date": r.check_in_date,
+                "check_out_date": r.check_out_date,
+                "num_guests": str(r.num_guests),
+                "status": r.status,
+                "total_cost": f"{r.total_cost:.2f}",
+                "created_at": r.created_at,
+                "updated_at": r.updated_at,
+            })
+        write_csv_atomic(reservations_path, FIELDNAMES, rows)
     return new
 
 
@@ -237,7 +293,7 @@ def modify_reservation(
     new_email: Optional[str] = None,
 ) -> bool:
     """Modify an existing reservation. Re-validates availability if room or dates change."""
-    existing = list_reservations(reservations_path)
+    existing = list_reservations(reservations_path, cfg)
     target = None
     for r in existing:
         if r.reservation_id == reservation_id:
@@ -311,38 +367,30 @@ def modify_reservation(
 
     target.updated_at = now_utc().isoformat(timespec='seconds')
 
-    # Write back
-    rows: List[Dict[str, str]] = []
-    for r in existing:
-        rows.append({
-            "reservation_id": r.reservation_id,
-            "room_id": r.room_id,
-            "guest_name": r.guest_name,
-            "phone": r.phone,
-            "email": r.email,
-            "check_in_date": r.check_in_date,
-            "check_out_date": r.check_out_date,
-            "num_guests": str(r.num_guests),
-            "status": r.status,
-            "total_cost": f"{r.total_cost:.2f}",
-            "created_at": r.created_at,
-            "updated_at": r.updated_at,
-        })
-    write_csv_atomic(reservations_path, FIELDNAMES, rows)
-    return True
-
-
-def cancel_reservation(reservations_path: Path, reservation_id: str) -> bool:
-    existing = list_reservations(reservations_path)
-    changed = False
-    now = now_utc().isoformat(timespec='seconds')
-    for r in existing:
-        if r.reservation_id == reservation_id and r.status not in {"Cancelled", "Checked-Out"}:
-            r.status = "Cancelled"
-            r.updated_at = now
-            changed = True
-            break
-    if changed:
+    # Write back - use SQLite or CSV based on path
+    if reservations_path.suffix == '.db':
+        from . import storage_sqlite
+        updates = {}
+        if new_room:
+            updates['room_id'] = target.room_id
+        if new_check_in:
+            updates['start_date'] = target.check_in_date
+        if new_check_out:
+            updates['end_date'] = target.check_out_date
+        if new_num_guests is not None:
+            updates['num_guests'] = target.num_guests
+        if new_guest_name is not None:
+            updates['guest_name'] = target.guest_name
+        if new_phone is not None:
+            updates['guest_phone'] = target.phone
+        if new_email is not None:
+            updates['guest_email'] = target.email
+        if room_changed or dates_changed:
+            updates['total_cost'] = target.total_cost
+        updates['updated_at'] = target.updated_at
+        
+        return storage_sqlite.update_reservation(cfg, reservation_id, updates)
+    else:
         rows: List[Dict[str, str]] = []
         for r in existing:
             rows.append({
@@ -360,6 +408,47 @@ def cancel_reservation(reservations_path: Path, reservation_id: str) -> bool:
                 "updated_at": r.updated_at,
             })
         write_csv_atomic(reservations_path, FIELDNAMES, rows)
+        return True
+
+
+def cancel_reservation(reservations_path: Path, reservation_id: str, cfg: Optional[AppConfig] = None) -> bool:
+    existing = list_reservations(reservations_path, cfg)
+    changed = False
+    now = now_utc().isoformat(timespec='seconds')
+    for r in existing:
+        if r.reservation_id == reservation_id and r.status not in {"Cancelled", "Checked-Out"}:
+            r.status = "Cancelled"
+            r.updated_at = now
+            changed = True
+            break
+    if changed:
+        # Write back - use SQLite or CSV based on path
+        if reservations_path.suffix == '.db':
+            if cfg is None:
+                raise ValueError("cfg parameter is required when using SQLite database")
+            from . import storage_sqlite
+            storage_sqlite.update_reservation(cfg, reservation_id, {
+                'status': 'Cancelled',
+                'updated_at': now
+            })
+        else:
+            rows: List[Dict[str, str]] = []
+            for r in existing:
+                rows.append({
+                    "reservation_id": r.reservation_id,
+                    "room_id": r.room_id,
+                    "guest_name": r.guest_name,
+                    "phone": r.phone,
+                    "email": r.email,
+                    "check_in_date": r.check_in_date,
+                    "check_out_date": r.check_out_date,
+                    "num_guests": str(r.num_guests),
+                    "status": r.status,
+                    "total_cost": f"{r.total_cost:.2f}",
+                    "created_at": r.created_at,
+                    "updated_at": r.updated_at,
+                })
+            write_csv_atomic(reservations_path, FIELDNAMES, rows)
     return changed
 
 
