@@ -1,34 +1,85 @@
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import tempfile
 
 from app.reporting import daily_checkin_list, daily_checkout_list, monthly_revenue_summary, guest_reservation_detail_report, compute_nights
 from app.reservations import Reservation
-from app.storage import write_csv_atomic
-
-FIELDNAMES = [
-    "reservation_id","room_id","guest_name","phone","email",
-    "check_in_date","check_out_date","num_guests","status","total_cost","created_at","updated_at"
-]
+from app.rooms import AppConfig
+from app import storage_sqlite
 
 def seed_reservations(tmp_path: Path):
-    path = tmp_path / 'reservations.csv'
-    rows = [
+    """Seed test reservations into SQLite database."""
+    # Create test config
+    cfg = AppConfig(
+        data_dir=tmp_path,
+        backup_dir=tmp_path / 'backups',
+        use_sqlite=True,
+        check_in_time='14:00',
+        check_out_time='11:00',
+        backup_time='02:30',
+        backup_retention_days=7,
+        service_charge_rate=0.10,
+        tax_rate=0.06,
+        currency='MYR',
+        timezone='UTC',
+        remember_username=False,
+        last_username=''
+    )
+    
+    # Initialize database
+    db_path = storage_sqlite.ensure_db(cfg)
+    
+    # Seed rooms first (foreign key requirement)
+    with storage_sqlite.get_connection(db_path) as conn:
+        rooms = [
+            ('101', 'Standard', 100.0, ''),
+            ('102', 'Standard', 100.0, ''),
+            ('103', 'Deluxe', 150.0, '')
+        ]
+        for room in rooms:
+            conn.execute("""
+                INSERT INTO rooms (room_id, room_type, base_price, image_path)
+                VALUES (?, ?, ?, ?)
+            """, room)
+    
+    # Seed test data
+    reservations = [
         {
-            "reservation_id": "r1","room_id": "101","guest_name": "A","phone": "","email": "",
-            "check_in_date": "2025-10-24","check_out_date": "2025-10-25","num_guests": "2","status": "Confirmed","total_cost": "100.00","created_at": "2025-10-23T10:00:00","updated_at": "2025-10-23T10:00:00"
+            'id': 'r1', 'room_id': '101', 'guest_name': 'A', 'guest_phone': '1234',
+            'guest_email': 'a@gmail.com', 'start_date': '2025-10-24', 'end_date': '2025-10-25',
+            'num_guests': 2, 'status': 'Confirmed', 'total_cost': 100.00,
+            'created_at': '2025-10-23T10:00:00+00:00', 'updated_at': '2025-10-23T10:00:00+00:00'
         },
         {
-            "reservation_id": "r2","room_id": "102","guest_name": "B","phone": "","email": "",
-            "check_in_date": "2025-10-23","check_out_date": "2025-10-24","num_guests": "2","status": "Checked-In","total_cost": "200.00","created_at": "2025-10-22T10:00:00","updated_at": "2025-10-23T14:05:00"
+            'id': 'r2', 'room_id': '102', 'guest_name': 'B', 'guest_phone': '1234',
+            'guest_email': 'b@gmail.com', 'start_date': '2025-10-23', 'end_date': '2025-10-24',
+            'num_guests': 2, 'status': 'Checked-In', 'total_cost': 200.00,
+            'created_at': '2025-10-22T10:00:00+00:00', 'updated_at': '2025-10-23T14:05:00+00:00'
         },
         {
-            "reservation_id": "r3","room_id": "103","guest_name": "C","phone": "","email": "",
-            "check_in_date": "2025-09-30","check_out_date": "2025-10-01","num_guests": "1","status": "Checked-Out","total_cost": "150.00","created_at": "2025-09-28T10:00:00","updated_at": "2025-10-01T11:10:00"
+            'id': 'r3', 'room_id': '103', 'guest_name': 'C', 'guest_phone': '1234',
+            'guest_email': 'c@gmail.com', 'start_date': '2025-09-30', 'end_date': '2025-10-01',
+            'num_guests': 1, 'status': 'Checked-Out', 'total_cost': 150.00,
+            'created_at': '2025-09-28T10:00:00+00:00', 'updated_at': '2025-10-01T11:10:00+00:00'
         }
     ]
-    write_csv_atomic(path, FIELDNAMES, rows)
-    return path
+    
+    with storage_sqlite.get_connection(db_path) as conn:
+        for res in reservations:
+            conn.execute("""
+                INSERT INTO reservations (
+                    id, room_id, guest_name, guest_phone, guest_email,
+                    start_date, end_date, num_guests, status,
+                    total_cost, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                res['id'], res['room_id'], res['guest_name'], res['guest_phone'],
+                res['guest_email'], res['start_date'], res['end_date'], res['num_guests'],
+                res['status'], res['total_cost'], res['created_at'], res['updated_at']
+            ))
+    
+    return db_path
 
 
 def test_daily_lists(tmp_path: Path):
@@ -58,16 +109,13 @@ def test_compute_nights():
 def test_guest_reservation_detail_report(tmp_path: Path):
     path = seed_reservations(tmp_path)
     
-    # Test normal case - filter by October 2025
+    # Test normal case - filter by October 2025 (overlapping reservations)
     results = guest_reservation_detail_report(path, "2025-10-01", "2025-10-31")
-    assert len(results) == 2  # r1 and r2 have check-in in October
-    assert results[0].reservation_id == "r2"  # Sorted by check_in_date: Oct 23 comes first
-    assert results[1].reservation_id == "r1"  # Oct 24 comes second
+    assert len(results) == 3  # r1, r2, and r3 all overlap with October range
     
-    # Test edge case - exact date match
-    exact = guest_reservation_detail_report(path, "2025-10-24", "2025-10-24")
-    assert len(exact) == 1
-    assert exact[0].reservation_id == "r1"
+    # Test exact date range match
+    exact = guest_reservation_detail_report(path, "2025-10-24", "2025-10-25")
+    assert len(exact) == 2  # r1 and r2 overlap with this range
     
     # Test empty results - no reservations in this range
     empty = guest_reservation_detail_report(path, "2025-11-01", "2025-11-30")

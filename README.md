@@ -449,10 +449,10 @@ python -m venv .venv
 pip install pytest pytest-cov
 ```
 
-### CSV File Locked
+### Database Locked
 
-**Problem**: File in use by another process (legacy CSV mode only)
-- **Solution**: Close the application and any CSV editors, then restart
+**Problem**: Database file is locked by another process
+- **Solution**: Close all instances of the application and any database browsers, then restart
 
 ### Database Locked
 
