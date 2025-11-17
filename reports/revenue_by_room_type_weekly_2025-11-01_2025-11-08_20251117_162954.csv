@@ -1,0 +1,7 @@
+time_bucket,room_type,total_revenue,reservation_count,avg_cost_per_reservation
+2025-10-27,Deluxe,629.64,2,314.82
+2025-10-27,Standard,699.60,2,349.80
+2025-10-27,Suite,874.50,2,437.25
+2025-11-03,Deluxe,1049.40,2,524.70
+2025-11-03,Standard,2098.80,9,233.20
+2025-11-03,Suite,2332.00,4,583.00

@@ -10,6 +10,7 @@ A Windows desktop application for managing hotel operations including reservatio
 - **Room Inventory**: Static room configuration with real-time status tracking (Available/Reserved/Occupied)
 - **Billing**: Automatic calculation with 10% service charge + 6% tax (MYR currency)
 - **Reporting**: Daily check-in/out lists and monthly revenue summaries
+- **Revenue Analytics**: Time-based analytics by room type (daily/weekly/monthly/quarterly) with trend charts and CSV export
 - **Data Persistence**: SQLite database with atomic transactions
 - **Automatic Backups**: Daily backups at 02:30 with 7-day retention
 - **Security**: PBKDF2-HMAC-SHA256 password hashing with brute-force protection
@@ -25,7 +26,7 @@ A Windows desktop application for managing hotel operations including reservatio
 
 - **Operating System**: Windows 10 or later
 - **Python**: 3.10 or higher
-- **Storage**: Local file system (no database required)
+- **Storage**: SQLite database (local file-based, no server required)
 - **Network**: Not required (offline operation)
 
 ## Installation
@@ -55,6 +56,8 @@ This installs:
 - `tkcalendar` - Calendar widget for date selection
 - `pytest` and `pytest-cov` - Testing framework
 - `tzdata` - Timezone database (required on Windows for timezone support)
+- `matplotlib` - Chart generation for analytics
+- `pandas` - Data analysis and CSV export
 
 ### 4. Configure Settings (Optional)
 
@@ -310,11 +313,20 @@ The application has four main tabs:
 
 #### 4. Reports
 - Generate monthly revenue summaries **(Admin only)**
+- Generate revenue analytics by room type with visual charts **(Admin only)**
 
-**How to use:**
+**Monthly Revenue:**
 1. Enter year-month (YYYY-MM format, e.g., 2025-10)
 2. Click "Compute Revenue"
 3. View total revenue in MYR
+
+**Revenue Analytics by Room Type:**
+1. Click "Revenue by Room Type" button in Reports tab
+2. Select start and end dates
+3. Choose time bucket (daily/weekly/monthly/quarterly)
+4. Select chart type (trend/bar/combined)
+5. Click "Generate" to create chart
+6. View and export to reports/ directory
 
 ## Architecture
 
@@ -324,15 +336,15 @@ The application has four main tabs:
 hotel_digital_management/
 ├── app/
 │   ├── __init__.py
+│   ├── analytics.py        # Revenue analytics by room type
 │   ├── auth.py             # Authentication and authorization
-│   ├── billing.py          # Cost calculations (service + tax)
-│   ├── config.py           # Configuration management
 │   ├── reporting.py        # Daily/monthly reports
-│   ├── reservations.py     # Reservation operations
+│   ├── reservations.py     # Reservation operations (includes billing logic)
 │   ├── rooms.py            # Room inventory management
 │   ├── storage.py          # Legacy CSV storage
 │   ├── storage_sqlite.py   # SQLite storage backend
 │   ├── timezone_utils.py   # Timezone handling
+│   ├── visualization.py    # Chart generation for analytics
 │   └── ui/
 │       └── main.py         # Tkinter UI with auth dialogs
 ├── data/
@@ -350,7 +362,7 @@ hotel_digital_management/
 - **Security First**: Authentication required before any operations, PBKDF2 password hashing
 - **Simple Modular Structure**: Clear separation between business logic, storage, and UI
 - **Database Storage**: SQLite with atomic transactions and WAL mode
-- **Minimal Dependencies**: Uses Python standard library (except tkcalendar and pytest)
+- **Minimal Dependencies**: Uses Python standard library plus tkcalendar, matplotlib, pandas for UI and analytics
 - **Offline Operation**: No network or external services required
 - **Automatic Safety**: Status transitions, backups, and double-booking prevention
 
@@ -358,7 +370,7 @@ hotel_digital_management/
 
 1. **User Authentication** → Login Dialog (Tkinter)
 2. **User Input** → UI (Tkinter)
-3. **Business Logic** → Modules (auth, reservations, rooms, billing, reporting)
+3. **Business Logic** → Modules (auth, analytics, reservations, rooms, reporting, visualization)
 4. **Storage** → SQLite database with atomic transactions
 5. **Backups** → Scheduled daily database copies with retention policy
 
@@ -397,11 +409,11 @@ python -m pytest tests/ --cov=app --cov-report=term-missing
 
 - **30+ tests** covering all core modules
 - **>90% overall coverage** (target: ≥70%)
-- Modules: auth (95%), billing (100%), config (100%), rooms (100%), reservations (97%), storage_sqlite (>85%)
+- Modules: auth (95%), rooms (100% - includes config), reservations (97% - includes billing logic), storage_sqlite (>85%), analytics, visualization, reporting
 
 ### Test Categories
 
-- **Unit Tests**: Authentication, password hashing, billing calculations, date logic, database operations
+- **Unit Tests**: Authentication, password hashing, cost calculations (billing), date logic, database operations, analytics aggregation
 - **Integration Tests**: Reservation flows, backup operations, CSV to SQLite migration
 - **Edge Cases**: Double-booking, invalid dates, lockout behavior, missing data
 - **Security Tests**: Brute-force protection, password verification, role enforcement
@@ -422,19 +434,19 @@ The system uses timezone-aware datetime handling to ensure accurate scheduling a
 - Scheduled daily at 02:30 local time
 - Creates timestamped copies in `backups/` directory
 - Retains last 7 days of backups automatically
-- Copies both `rooms.csv` and `reservations.csv`
+- Copies the SQLite database file (`reservations.db`)
 
 ### Manual Backup
 
 ```powershell
-# Copy data directory
-xcopy data\*.csv backups\manual\ /Y
+# Copy database file
+Copy-Item data\reservations.db backups\manual\ -Force
 ```
 
 ### Recovery
 
 1. Stop the application
-2. Restore CSV files from `backups/` to `data/`
+2. Restore database file from `backups/` to `data/`
 3. Restart the application
 
 ## Troubleshooting
@@ -530,17 +542,17 @@ python run.py
 ## Limitations
 
 - Single-property support only
-- Single concurrent user (file locking serializes writes)
-- CSV storage (not suitable for >1000 rooms or high concurrency)
+- Single concurrent user (database locking serializes writes)
+- SQLite database (suitable for small-to-medium operations; ~20 rooms optimal)
 - No online booking integration
 - No payment processing
-- Windows-only (Tkinter + file locking implementation)
+- Windows-only (Tkinter UI implementation)
 
 ## Future Enhancements
 
 Potential improvements (not currently implemented):
 - Multi-property support
-- Database backend (SQLite/PostgreSQL)
+- PostgreSQL backend for larger scale operations
 - Web interface
 - Mobile app
 - Channel manager integration (Booking.com, Expedia)
@@ -562,6 +574,13 @@ For issues or questions:
 
 ## Version History
 
+### v2.1.0 (2025-11-14)
+- **Revenue Analytics**: Time-based analytics by room type (daily/weekly/monthly/quarterly)
+- **Visualization**: Trend charts and bar charts using matplotlib
+- **Data Export**: PNG chart export and CSV data export to reports/ directory
+- **Analytics UI**: New Analytics menu with modal dialog for customizable reports
+- **Dependencies**: Added matplotlib and pandas for data analysis and visualization
+
 ### v2.0.0 (2025-11-07)
 - **Authentication System**: Local user authentication with admin/staff roles
 - **Security**: PBKDF2-HMAC-SHA256 password hashing (310,000 iterations)
@@ -575,7 +594,7 @@ For issues or questions:
 ### v1.0.0 (2025-10-24)
 - Initial release
 - Core reservation management
-- Billing with service charge and tax
+- Cost calculations with service charge and tax (integrated in reservations)
 - Daily/monthly reporting
 - Automatic backups
 - 90% test coverage

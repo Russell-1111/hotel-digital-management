@@ -1,7 +1,7 @@
 # Hotel Digital Management System - User Guide
 
-**Version 1.0**  
-**Last Updated: October 29, 2025**
+**Version 2.1**  
+**Last Updated: November 17, 2025**
 
 ---
 
@@ -33,7 +33,7 @@ The application uses a tabbed interface for different hotel management functions
 - **Daily Ops**: View today's check-ins and check-outs
 - **Reservations**: Create, modify, and cancel reservations
 - **Availability**: Check room availability for specific date ranges
-- **Reports**: Generate revenue and guest detail reports
+- **Reports**: Generate revenue and guest detail reports; includes Analytics section **(Admin only)**
 
 ---
 
@@ -923,6 +923,241 @@ Grand Total: MYR 3,847.20
 
 ---
 
+### Section 3: Revenue Analytics by Room Type
+
+#### 27. Revenue by Room Type Button
+- **Location**: Analytics section in Reports tab or Analytics menu
+- **Function**: Opens the Revenue Analytics dialog
+- **Access**: Admin only
+- **When to use**: Analyzing revenue trends, identifying top-performing room types, making pricing decisions
+
+**How to use:**
+1. Click **"Revenue by Room Type"** button
+2. Analytics dialog opens with configuration options
+
+---
+
+#### 28. Analytics Dialog - Date Range Selection
+
+**Start Date Field**
+- **Label**: "Start Date (YYYY-MM-DD):"
+- **Function**: Set the beginning of the analysis period
+- **Format**: `YYYY-MM-DD`
+
+**End Date Field**
+- **Label**: "End Date (YYYY-MM-DD):"
+- **Function**: Set the end of the analysis period
+- **Format**: `YYYY-MM-DD`
+
+**How to use:**
+1. Enter start date (e.g., `2025-11-01`)
+2. Enter end date (e.g., `2025-11-30`)
+3. Select time bucket and chart type
+4. Click **Generate**
+
+**Example 1: Monthly analysis**
+- Start: `2025-11-01`
+- End: `2025-11-30`
+- Bucket: Monthly
+- Shows revenue by room type for November
+
+**Example 2: Quarterly trend**
+- Start: `2025-09-01`
+- End: `2025-11-30`
+- Bucket: Monthly
+- Chart Type: Trend
+- Shows 3-month revenue trends by room type
+
+---
+
+#### 29. Time Bucket Selection
+- **Location**: Middle section of Analytics dialog
+- **Label**: "Time Bucket:"
+- **Function**: Choose how to group the data
+- **Options**: 
+  - **Daily**: Group by individual days
+  - **Weekly**: Group by week (Sunday to Saturday)
+  - **Monthly**: Group by month (YYYY-MM)
+  - **Quarterly**: Group by quarter (YYYY-Q1/Q2/Q3/Q4)
+
+**How to use:**
+1. Select radio button for desired bucket
+2. Affects how data is aggregated and displayed
+
+**Example 1: Daily bucket**
+- Best for short-term analysis (1-2 weeks)
+- Shows day-by-day revenue patterns
+- Useful for identifying busy days
+
+**Example 2: Monthly bucket**
+- Best for long-term trends (3-12 months)
+- Shows month-over-month growth
+- Standard for financial reporting
+
+**Example 3: Quarterly bucket**
+- Best for annual/seasonal analysis
+- Shows quarter performance
+- Useful for strategic planning
+
+---
+
+#### 30. Chart Type Selection
+- **Location**: Bottom section of Analytics dialog
+- **Label**: "Chart Type:"
+- **Function**: Choose visualization style
+- **Options**:
+  - **Trend**: Line chart showing trends over time
+  - **Bar**: Bar chart showing absolute values
+  - **Combined**: Both trend and bar charts side-by-side
+
+**How to use:**
+1. Select radio button for desired chart type
+2. Click **Generate** to create visualization
+
+**Chart Type Guide:**
+
+**Trend (Line Chart)**
+- Shows changes over time
+- Each room type has a colored line
+- Best for: Identifying patterns, seasonal trends, growth/decline
+- Use when: Analyzing time-based changes
+
+**Bar (Bar Chart)**
+- Shows absolute values for comparison
+- Each time period has grouped bars by room type
+- Best for: Comparing room types, seeing exact values
+- Use when: Making pricing decisions, capacity planning
+
+**Combined**
+- Shows both trend and bar charts
+- Comprehensive view
+- Best for: Full analysis, presentations, reports
+- Use when: Need both perspective and detail
+
+---
+
+#### 31. Generate Button
+- **Location**: Bottom-right of Analytics dialog
+- **Function**: Creates charts and exports files
+- **When to use**: After configuring date range, time bucket, and chart type
+
+**How to use:**
+1. Configure all settings
+2. Click **Generate**
+3. System processes data and creates visualizations
+4. Success dialog shows file paths
+5. Files saved to `reports/` directory
+
+**What happens:**
+- SQL aggregation runs on reservations data
+- Revenue calculated by room type and time period
+- Chart(s) generated using matplotlib
+- PNG file saved with timestamp
+- CSV file saved with same timestamp
+- Success message displays file paths
+
+**File naming convention:**
+```
+revenue_by_room_type_{bucket}_{start}_{end}_{timestamp}.png
+revenue_by_room_type_{bucket}_{start}_{end}_{timestamp}.csv
+```
+
+**Example:**
+```
+Configuration:
+- Start: 2025-11-01
+- End: 2025-11-30
+- Bucket: Monthly
+- Chart: Combined
+- Generated: 2025-11-17 14:30:45
+
+Files created:
+reports/revenue_by_room_type_monthly_2025-11-01_2025-11-30_20251117_143045.png
+reports/revenue_by_room_type_monthly_2025-11-01_2025-11-30_20251117_143045.csv
+```
+
+---
+
+#### 32. Exported PNG Chart
+- **Location**: `reports/` directory
+- **Format**: PNG image (1200×800 pixels, 100 DPI)
+- **Content**: Professional chart with:
+  - Title showing date range
+  - Legend identifying room types
+  - Axis labels with dates and revenue (MYR)
+  - Grid for readability
+  - Color-coded room types
+
+**How to use:**
+1. Navigate to `reports/` folder
+2. Open PNG file with image viewer
+3. Use in presentations, reports, or emails
+4. Print for meetings
+
+---
+
+#### 33. Exported CSV Data
+- **Location**: `reports/` directory
+- **Format**: CSV (comma-separated values)
+- **Columns**: 
+  - `time_bucket`: Date/period identifier
+  - `room_type`: Room type name
+  - `total_revenue`: Revenue in MYR
+  - `reservation_count`: Number of reservations
+
+**How to use:**
+1. Open with Excel or any spreadsheet software
+2. Perform custom analysis
+3. Create pivot tables
+4. Import into accounting software
+5. Share with stakeholders
+
+**Example CSV content:**
+```csv
+time_bucket,room_type,total_revenue,reservation_count
+2025-11,Standard,3600.00,12
+2025-11,Deluxe,5400.00,10
+2025-11,Suite,7500.00,6
+```
+
+---
+
+### Analytics Use Cases
+
+**Use Case 1: Identify best-performing room type**
+1. Open Analytics dialog
+2. Set last 3 months date range
+3. Bucket: Monthly
+4. Chart: Bar
+5. Generate
+6. Compare bar heights to see which room type generates most revenue
+
+**Use Case 2: Track seasonal trends**
+1. Set 12-month date range (full year)
+2. Bucket: Monthly
+3. Chart: Trend
+4. Generate
+5. Look for peaks and valleys across different room types
+6. Plan pricing and promotions accordingly
+
+**Use Case 3: Quarterly business review**
+1. Set date range for completed quarter
+2. Bucket: Quarterly
+3. Chart: Combined
+4. Generate
+5. Export CSV for detailed analysis
+6. Use PNG in presentation
+
+**Use Case 4: Week-by-week performance**
+1. Set 8-week date range
+2. Bucket: Weekly
+3. Chart: Trend
+4. Generate
+5. Identify which weeks have highest/lowest revenue
+6. Adjust staffing and inventory
+
+---
+
 ## Common Workflows
 
 ### Workflow 1: Walk-in Guest (Same-Day Reservation)
@@ -1177,7 +1412,7 @@ Grand Total: MYR 3,847.20
 - **F1** (or Click): Daily Ops
 - **F2** (or Click): Reservations
 - **F3** (or Click): Availability
-- **F4** (or Click): Reports
+- **F4** (or Click): Reports (includes Analytics section)
 
 ### Room Types and Base Prices
 - **Standard** (101, 103): MYR 120.00/night
@@ -1206,8 +1441,8 @@ For technical issues or questions not covered in this guide:
 2. Contact your IT support team
 3. Reference this guide's section related to your issue
 
-**Version:** 1.0  
-**Last Updated:** October 29, 2025
+**Version:** 2.1  
+**Last Updated:** November 17, 2025
 
 ---
 

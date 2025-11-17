@@ -6,56 +6,62 @@ Hotel Digital Management System for a single boutique hotel (~20 rooms). The sys
 ## Tech Stack
 - Language: Python 3.x
 - UI: Tkinter desktop application (Windows)
-- Storage: CSV files (file-based, no external database)
+- Storage: SQLite database (primary); legacy CSV support maintained
+- Visualization: matplotlib (charts), pandas (data analysis)
 - Packaging/Distribution: Local Windows installation
-- Logging: Planned via Python `logging` (structured logs; TBD)
-- Config: INI file (`config.ini`) for simple settings
+- Logging: Python `logging` with structured logs
+- Config: INI file (`config.ini`) for settings
 
 ## Project Conventions
 
 ### Code Style
 - Naming: `snake_case` for functions/variables, `PascalCase` for classes
-- File naming: `snake_case.py` per module; group by feature (reservations, rooms, billing, reporting, storage, ui)
+- File naming: `snake_case.py` per module; group by feature (analytics, auth, reservations, rooms, reporting, storage, visualization, ui)
 - Formatting: Black (line length ~100); optional Ruff or Flake8 linting
 - Imports: absolute within package; standard library first, then third-party, then local
 - Functions: target ≤ 50 lines; prefer pure functions for calculations
 - Docstrings: Google-style or reST for public functions; type hints required
 
 ### Architecture Patterns
-- Application architecture: Simple modular structure (modules: reservations, rooms, billing, reporting, storage, ui)
+- Application architecture: Simple modular structure (modules: auth, analytics, reservations, rooms, reporting, storage, visualization, ui)
 - Boundaries:
-	- `reservations`: create/modify/cancel, availability checks, business rules
+	- `auth`: authentication, password hashing, role-based access control
+	- `analytics`: SQL-based revenue aggregation by room type with time bucketing
+	- `reservations`: create/modify/cancel, availability checks, business rules, cost calculation (room rate + 10% service charge + 6% tax on subtotal)
 	- `rooms`: static inventory, derived status (Available/Reserved/Occupied)
-	- `billing`: cost calculation (room rate + 10% service charge + 6% tax on subtotal)
 	- `reporting`: daily check-in/out lists; monthly revenue summaries
-	- `storage`: CSV read/write with file locking; backup/restore routines
+	- `storage`: CSV read/write with file locking (legacy); backup/restore routines
+	- `storage_sqlite`: SQLite database operations with WAL mode and atomic transactions
+	- `visualization`: matplotlib chart generation (trend, bar, combined) with PNG/CSV export
 	- `ui`: Tkinter screens; calls into services via thin controllers
 - Communication: in-process function calls (no network API)
 - Error handling: central error types; top-level UI error dialog + safe fallbacks
-- Logging: planned structured logs with timestamps via Python `logging`
-- Configuration: `config.ini` for paths, backup time, and check-in/out times
+- Logging: structured logs with timestamps via Python `logging`
+- Configuration: `config.ini` for paths, backup time, check-in/out times, timezone, auth settings
 
 ### Data Model and Storage
-- Files (one per data type; CSV):
-	- `rooms.csv` (static inventory)
-		- Columns: `room_id,room_type,base_price`
-	- `reservations.csv` (dynamic)
-		- Columns: `reservation_id,room_id,guest_name,phone,email,check_in_date,check_out_date,num_guests,status,total_cost,created_at,updated_at`
+- Primary Storage: SQLite database (`reservations.db`)
+	- Tables: `rooms`, `reservations`, `users`
+	- Atomic transactions with WAL mode
+	- Timezone-aware timestamps (stored in UTC, displayed in hotel timezone)
+- Legacy Storage: CSV files (deprecated but supported)
+	- `rooms.csv`: Columns: `room_id,room_type,base_price,image_path`
+	- `reservations.csv`: Columns: `reservation_id,room_id,guest_name,phone,email,check_in_date,check_out_date,num_guests,status,total_cost,created_at,updated_at`
 - Status derivation rules:
 	- Available → Reserved on booking creation
 	- Reserved → Occupied automatically at check-in date (14:00 by default)
 	- Occupied → Available at check-out date/time (11:00 by default)
-- Overbooking prevention: availability check reads current CSV + applies status derivation before confirming bookings; writes use file locks to avoid race conditions.
-- Backups: automatic daily backup of CSV files to `backups/` with timestamped filenames; run at 02:30 local time; retain last 7 days.
-- Date/Time format: ISO (YYYY-MM-DD) for dates; use local hotel time for transitions (14:00 check-in, 11:00 check-out)
+- Overbooking prevention: availability check reads current data + applies status derivation before confirming bookings; writes use database transactions to avoid race conditions.
+- Backups: automatic daily backup of SQLite database to `backups/` with timestamped filenames; run at 02:30 local time; retain last 7 days.
+- Date/Time format: ISO (YYYY-MM-DD) for dates; timezone-aware datetimes stored in UTC; use local hotel time for transitions (14:00 check-in, 11:00 check-out)
 - Currency: MYR (display in UI and reports)
 
 ### Testing Strategy
 - Framework: Pytest
-- Unit tests: pricing/tax calculations; date/status transitions; CSV parsing/serialization
-- Integration tests: reservation flow against temp CSV files; backup/restore
+- Unit tests: pricing/tax calculations (in reservations); date/status transitions; database operations; analytics aggregation
+- Integration tests: reservation flow with SQLite; backup/restore; CSV migration
 - UI tests: minimal smoke via small presenters/controllers (logic separated from Tkinter views)
-- Coverage target: 70%+ overall; must include billing and reservations modules
+- Coverage target: 70%+ overall; must include auth, reservations, and analytics modules
 - Conventions: AAA pattern (Arrange-Act-Assert); factory helpers for test data
 
 ### Git Workflow
@@ -94,9 +100,9 @@ Hotel Digital Management System for a single boutique hotel (~20 rooms). The sys
 - On-device operation (no internet required)
 
 ### Technical Constraints
-- File-based CSV storage; no external DB
+- SQLite database storage (single-file, serverless)
 - Windows desktop environment
-- Simple file locking to serialize writes
+- Database transactions for data consistency
 - Automatic daily backups (retain 7 days)
 
 ### Performance Requirements
