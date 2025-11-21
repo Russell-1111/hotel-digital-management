@@ -259,8 +259,8 @@ def create_reservation(cfg: AppConfig, reservations_path: Path, room: Room, gues
 
 
 def modify_reservation(
-    cfg: AppConfig,
     reservations_path: Path,
+    cfg: AppConfig,
     reservation_id: str,
     new_room: Optional[Room] = None,
     new_check_in: Optional[str] = None,
@@ -336,9 +336,7 @@ def modify_reservation(
         nights = _nights(target.check_in_date, target.check_out_date)
         # Find the room's base price
         from .rooms import load_rooms
-        from pathlib import Path as P
-        rooms_path = reservations_path.parent / 'rooms.csv'
-        rooms = load_rooms(rooms_path)
+        rooms = load_rooms(cfg)
         room_obj = next((rm for rm in rooms if rm.room_id == target.room_id), None)
         if room_obj:
             target.total_cost = compute_total(room_obj.base_price, nights, cfg.service_charge_rate, cfg.tax_rate)

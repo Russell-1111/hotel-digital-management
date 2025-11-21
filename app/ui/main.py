@@ -1562,6 +1562,11 @@ class App(tk.Tk):
 
         # Save button
         def save_changes():
+            # Clear any existing error labels
+            for widget in frm.winfo_children():
+                if isinstance(widget, ttk.Label) and str(widget.cget('foreground')) == 'red':
+                    widget.destroy()
+            
             new_name = mod_name.get().strip()
             new_phone = mod_phone.get().strip()
             new_email = mod_email.get().strip()
@@ -1586,8 +1591,8 @@ class App(tk.Tk):
 
             try:
                 modify_reservation(
-                    self.cfg,
                     self.db_path,
+                    self.cfg,
                     rid,
                     new_room=new_room,
                     new_check_in=new_ci if new_ci != target.check_in_date else None,
