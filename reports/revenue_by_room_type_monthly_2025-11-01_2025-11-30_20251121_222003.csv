@@ -1,0 +1,4 @@
+time_bucket,room_type,total_revenue,reservation_count,avg_cost_per_reservation
+2025-11,Deluxe,2728.44,8,341.06
+2025-11,Standard,4057.68,16,253.60
+2025-11,Suite,4372.50,7,624.64

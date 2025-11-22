@@ -1743,7 +1743,11 @@ class App(tk.Tk):
         self.revenue_var = tk.StringVar(value="MYR 0.00")
         ttk.Label(result_frame, textvariable=self.revenue_var, font=("Segoe UI", 16, "bold")).pack()
 
-        self.refresh_revenue()
+        # Only refresh revenue for admin users during initialization
+        if self.current_user['role'] == 'admin':
+            self.refresh_revenue()
+        else:
+            self.revenue_var.set("N/A (Admin Only)")
 
         # Guest Reservation Details Section
         detail_section = ttk.LabelFrame(self.report_frame, text="Guest Reservation Details", padding=8)

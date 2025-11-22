@@ -1,0 +1,233 @@
+2025-11-21 14:13:29,115 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 14:13:29,763 INFO [app.ui.main] UI initializing
+2025-11-21 14:13:39,300 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 14:13:39,325 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 14:52:20,624 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 14:52:20,771 INFO [app.ui.main] UI initializing
+2025-11-21 14:52:27,829 WARNING [app.auth] Failed login attempt for user 'Russell'
+2025-11-21 14:52:36,234 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 14:52:36,266 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 14:54:30,617 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 14:54:30,721 INFO [app.ui.main] UI initializing
+2025-11-21 14:54:37,116 WARNING [app.auth] Failed login attempt for user 'Russell'
+2025-11-21 14:54:42,589 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 14:54:42,623 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 14:57:33,913 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Guest name is required
+2025-11-21 14:57:46,019 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Phone number is required
+2025-11-21 14:57:54,041 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email address is required
+2025-11-21 14:58:04,730 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email must end with @gmail.com or @outlook.com
+2025-11-21 14:58:18,099 INFO [app.storage_sqlite] Created reservation 6231919c-2a37-43f7-bba1-c196aefcfc83 for room 102
+2025-11-21 14:59:23,423 INFO [app.storage_sqlite] Updated reservation 6231919c-2a37-43f7-bba1-c196aefcfc83
+2025-11-21 15:06:58,446 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 15:06:58,561 INFO [app.ui.main] UI initializing
+2025-11-21 15:11:20,020 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 15:11:20,079 INFO [app.ui.main] UI initializing
+2025-11-21 15:11:25,704 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 15:11:25,728 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 15:11:52,171 INFO [app.storage_sqlite] Updated reservation 6231919c-2a37-43f7-bba1-c196aefcfc83
+2025-11-21 15:12:08,502 INFO [app.storage_sqlite] Updated reservation 4ed9c270-ff8e-4f3c-90d0-40730ae89399
+2025-11-21 15:12:53,242 INFO [app.storage_sqlite] Created reservation abca26cb-211b-4318-8ce3-d7d131b7b166 for room 101
+2025-11-21 15:14:54,556 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 15:14:54,620 INFO [app.ui.main] UI initializing
+2025-11-21 15:15:00,863 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 15:15:00,884 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 15:15:32,251 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 15:18:50,654 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 15:18:50,715 INFO [app.ui.main] UI initializing
+2025-11-21 15:18:57,238 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 15:18:57,262 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 15:22:30,064 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 15:24:13,425 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 15:24:23,525 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 15:24:34,246 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 15:24:53,392 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 15:25:09,243 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 15:35:50,466 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 15:35:50,533 INFO [app.ui.main] UI initializing
+2025-11-21 15:35:56,385 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 15:35:56,408 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 15:39:49,725 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 15:39:49,786 INFO [app.ui.main] UI initializing
+2025-11-21 15:39:58,706 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 15:39:58,728 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 20:46:09,408 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 20:46:09,499 INFO [app.ui.main] UI initializing
+2025-11-21 20:46:18,552 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 20:46:18,577 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 20:46:38,427 INFO [app.ui.main] About to call modify_reservation with db_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:46:38,427 INFO [app.ui.main] db_path value: data\reservations.db
+2025-11-21 20:46:38,427 INFO [app.ui.main] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:46:38,427 INFO [app.reservations] modify_reservation called with reservations_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:46:38,427 INFO [app.reservations] reservations_path value: data\reservations.db
+2025-11-21 20:46:38,427 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:47:15,013 INFO [app.ui.main] About to call modify_reservation with db_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:47:15,013 INFO [app.ui.main] db_path value: data\reservations.db
+2025-11-21 20:47:15,014 INFO [app.ui.main] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:47:15,014 INFO [app.reservations] modify_reservation called with reservations_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:47:15,014 INFO [app.reservations] reservations_path value: data\reservations.db
+2025-11-21 20:47:15,014 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:47:17,190 INFO [app.ui.main] About to call modify_reservation with db_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:47:17,190 INFO [app.ui.main] db_path value: data\reservations.db
+2025-11-21 20:47:17,191 INFO [app.ui.main] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:47:17,191 INFO [app.reservations] modify_reservation called with reservations_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:47:17,191 INFO [app.reservations] reservations_path value: data\reservations.db
+2025-11-21 20:47:17,191 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:48:07,372 INFO [app.ui.main] About to call modify_reservation with db_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:48:07,372 INFO [app.ui.main] db_path value: data\reservations.db
+2025-11-21 20:48:07,373 INFO [app.ui.main] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:48:07,373 INFO [app.reservations] modify_reservation called with reservations_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:48:07,373 INFO [app.reservations] reservations_path value: data\reservations.db
+2025-11-21 20:48:07,373 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:50:18,014 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 20:50:18,073 INFO [app.ui.main] UI initializing
+2025-11-21 20:50:24,140 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 20:50:24,163 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 20:50:24,470 INFO [app.reservations] list_reservations called with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:50:24,470 INFO [app.reservations] path value: data\reservations.db
+2025-11-21 20:50:24,470 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:50:24,470 INFO [app.reservations] About to call storage_sqlite.read_reservations with cfg=AppConfig
+2025-11-21 20:50:24,477 INFO [app.reservations] storage_sqlite.read_reservations returned successfully
+2025-11-21 20:50:24,485 INFO [app.reservations] list_reservations called with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:50:24,485 INFO [app.reservations] path value: data\reservations.db
+2025-11-21 20:50:24,485 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:50:24,485 INFO [app.reservations] About to call storage_sqlite.read_reservations with cfg=AppConfig
+2025-11-21 20:50:24,492 INFO [app.reservations] storage_sqlite.read_reservations returned successfully
+2025-11-21 20:50:24,676 INFO [app.reservations] list_reservations called with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:50:24,677 INFO [app.reservations] path value: data\reservations.db
+2025-11-21 20:50:24,677 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:50:24,677 INFO [app.reservations] About to call storage_sqlite.read_reservations with cfg=AppConfig
+2025-11-21 20:50:24,685 INFO [app.reservations] storage_sqlite.read_reservations returned successfully
+2025-11-21 20:50:53,424 INFO [app.reservations] list_reservations called with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:50:53,424 INFO [app.reservations] path value: data\reservations.db
+2025-11-21 20:50:53,424 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:50:53,424 INFO [app.reservations] About to call storage_sqlite.read_reservations with cfg=AppConfig
+2025-11-21 20:50:53,432 INFO [app.reservations] storage_sqlite.read_reservations returned successfully
+2025-11-21 20:50:53,666 INFO [app.reservations] list_reservations called with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:50:53,666 INFO [app.reservations] path value: data\reservations.db
+2025-11-21 20:50:53,666 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:50:53,667 INFO [app.reservations] About to call storage_sqlite.read_reservations with cfg=AppConfig
+2025-11-21 20:50:53,675 INFO [app.reservations] storage_sqlite.read_reservations returned successfully
+2025-11-21 20:50:57,593 INFO [app.ui.main] About to call modify_reservation with db_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:50:57,593 INFO [app.ui.main] db_path value: data\reservations.db
+2025-11-21 20:50:57,594 INFO [app.ui.main] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:50:57,594 INFO [app.reservations] modify_reservation called with reservations_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:50:57,594 INFO [app.reservations] reservations_path value: data\reservations.db
+2025-11-21 20:50:57,594 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:50:57,594 INFO [app.reservations] About to call list_reservations with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:50:57,594 INFO [app.reservations] list_reservations called with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:50:57,594 INFO [app.reservations] path value: data\reservations.db
+2025-11-21 20:50:57,594 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:50:57,594 INFO [app.reservations] About to call storage_sqlite.read_reservations with cfg=AppConfig
+2025-11-21 20:50:57,603 INFO [app.reservations] storage_sqlite.read_reservations returned successfully
+2025-11-21 20:50:57,604 INFO [app.reservations] list_reservations returned successfully
+2025-11-21 20:51:06,117 INFO [app.ui.main] About to call modify_reservation with db_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:51:06,118 INFO [app.ui.main] db_path value: data\reservations.db
+2025-11-21 20:51:06,118 INFO [app.ui.main] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:51:06,118 INFO [app.reservations] modify_reservation called with reservations_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:51:06,118 INFO [app.reservations] reservations_path value: data\reservations.db
+2025-11-21 20:51:06,118 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:51:06,118 INFO [app.reservations] About to call list_reservations with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:51:06,119 INFO [app.reservations] list_reservations called with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:51:06,119 INFO [app.reservations] path value: data\reservations.db
+2025-11-21 20:51:06,119 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:51:06,119 INFO [app.reservations] About to call storage_sqlite.read_reservations with cfg=AppConfig
+2025-11-21 20:51:06,126 INFO [app.reservations] storage_sqlite.read_reservations returned successfully
+2025-11-21 20:51:06,127 INFO [app.reservations] list_reservations returned successfully
+2025-11-21 20:51:45,104 INFO [app.ui.main] About to call modify_reservation with db_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:51:45,105 INFO [app.ui.main] db_path value: data\reservations.db
+2025-11-21 20:51:45,105 INFO [app.ui.main] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:51:45,105 INFO [app.reservations] modify_reservation called with reservations_path=WindowsPath, cfg=AppConfig
+2025-11-21 20:51:45,105 INFO [app.reservations] reservations_path value: data\reservations.db
+2025-11-21 20:51:45,105 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:51:45,105 INFO [app.reservations] About to call list_reservations with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:51:45,105 INFO [app.reservations] list_reservations called with path=WindowsPath, cfg=AppConfig
+2025-11-21 20:51:45,106 INFO [app.reservations] path value: data\reservations.db
+2025-11-21 20:51:45,106 INFO [app.reservations] cfg value: AppConfig(data_dir=WindowsPath('data'), backup_dir=WindowsPath('backups'), use_sqlite=True, check_in_time='14:00', check_out_time='11:00', backup_time='02:30', backup_retention_days=7, service_charge_rate=0.1, tax_rate=0.06, currency='MYR', timezone='Asia/Kuala_Lumpur', remember_username=True, last_username='Russell')
+2025-11-21 20:51:45,106 INFO [app.reservations] About to call storage_sqlite.read_reservations with cfg=AppConfig
+2025-11-21 20:51:45,115 INFO [app.reservations] storage_sqlite.read_reservations returned successfully
+2025-11-21 20:51:45,115 INFO [app.reservations] list_reservations returned successfully
+2025-11-21 20:54:05,672 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 20:54:05,731 INFO [app.ui.main] UI initializing
+2025-11-21 20:54:10,665 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 20:54:10,701 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 20:57:45,871 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 20:57:45,968 INFO [app.ui.main] UI initializing
+2025-11-21 20:57:51,253 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 20:57:51,276 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 20:59:37,350 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 20:59:37,415 INFO [app.ui.main] UI initializing
+2025-11-21 21:00:04,448 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 21:00:04,508 INFO [app.ui.main] UI initializing
+2025-11-21 21:00:09,867 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 21:00:09,899 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 21:00:39,428 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 21:00:39,489 INFO [app.ui.main] UI initializing
+2025-11-21 21:00:44,174 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 21:00:44,212 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 21:24:40,873 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 21:24:40,937 INFO [app.ui.main] UI initializing
+2025-11-21 21:24:46,325 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 21:24:46,352 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 21:24:54,853 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 21:25:03,031 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 21:29:02,826 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 21:29:03,312 INFO [app.ui.main] UI initializing
+2025-11-21 21:29:09,368 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 21:29:09,409 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 21:29:27,694 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 21:29:36,223 INFO [app.storage_sqlite] Updated reservation abca26cb-211b-4318-8ce3-d7d131b7b166
+2025-11-21 21:34:59,911 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 21:35:00,059 INFO [app.ui.main] UI initializing
+2025-11-21 21:35:01,539 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 21:35:01,620 INFO [app.ui.main] UI initializing
+2025-11-21 21:35:58,943 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 21:35:59,046 INFO [app.ui.main] UI initializing
+2025-11-21 21:36:18,752 WARNING [app.auth] Failed login attempt for user 'Russell'
+2025-11-21 21:36:24,026 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 21:36:24,074 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 21:36:47,796 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Guest name is required
+2025-11-21 21:36:57,550 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Phone number is required
+2025-11-21 21:37:10,263 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email must end with @gmail.com or @outlook.com
+2025-11-21 21:37:17,070 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email address is required
+2025-11-21 21:37:39,468 INFO [app.storage_sqlite] Created reservation 372a2635-1749-45ce-b2e2-0924721bd73a for room 103
+2025-11-21 21:38:02,273 INFO [app.storage_sqlite] Updated reservation 372a2635-1749-45ce-b2e2-0924721bd73a
+2025-11-21 21:38:13,928 INFO [app.storage_sqlite] Updated reservation 372a2635-1749-45ce-b2e2-0924721bd73a
+2025-11-21 22:10:34,352 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 22:10:34,500 INFO [app.ui.main] UI initializing
+2025-11-21 22:10:42,642 WARNING [app.auth] Failed login attempt for user 'Russell'
+2025-11-21 22:10:48,354 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 22:10:48,384 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 22:11:55,355 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Guest name is required
+2025-11-21 22:12:03,735 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Phone number is required
+2025-11-21 22:12:10,914 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email address is required
+2025-11-21 22:12:18,318 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email must end with @gmail.com or @outlook.com
+2025-11-21 22:12:37,867 INFO [app.storage_sqlite] Created reservation bd28d515-2f3f-4f79-9d7b-6c1af83b5d33 for room 103
+2025-11-21 22:14:06,207 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 22:14:06,276 INFO [app.ui.main] UI initializing
+2025-11-21 22:14:13,610 WARNING [app.auth] Failed login attempt for user 'Russell'
+2025-11-21 22:14:20,084 WARNING [app.auth] Failed login attempt for user 'Russell'
+2025-11-21 22:14:26,251 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 22:14:26,276 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 22:14:48,004 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Guest name is required
+2025-11-21 22:14:55,525 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Phone number is required
+2025-11-21 22:15:06,477 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email address is required
+2025-11-21 22:15:14,006 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email must end with @gmail.com or @outlook.com
+2025-11-21 22:16:08,518 INFO [__main__] Starting Hotel Digital Management UI
+2025-11-21 22:16:08,607 INFO [app.ui.main] UI initializing
+2025-11-21 22:16:16,880 WARNING [app.auth] Failed login attempt for user 'Russell'
+2025-11-21 22:16:23,612 INFO [app.auth] User 'Russell' authenticated successfully
+2025-11-21 22:16:23,650 INFO [app.ui.main] User 'Russell' logged in with role 'admin'
+2025-11-21 22:16:35,935 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Guest name is required
+2025-11-21 22:16:48,013 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email address is required
+2025-11-21 22:16:51,038 ERROR [app.ui.main] Reservation Error: Failed to create reservation: Email address is required
+2025-11-21 22:17:18,414 INFO [app.storage_sqlite] Created reservation b1870c4d-d781-47c3-8358-fe1845f0d3b3 for room 101
+2025-11-21 22:18:01,961 INFO [app.storage_sqlite] Updated reservation bd28d515-2f3f-4f79-9d7b-6c1af83b5d33
+2025-11-21 22:20:02,703 INFO [app.analytics] Aggregated 3 rows for monthly bucket from 2025-11-01 to 2025-11-30
+2025-11-21 22:20:03,269 INFO [matplotlib.category] Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2025-11-21 22:20:03,270 INFO [matplotlib.category] Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2025-11-21 22:20:03,272 INFO [matplotlib.category] Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2025-11-21 22:20:03,273 INFO [matplotlib.category] Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2025-11-21 22:20:03,273 INFO [matplotlib.category] Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2025-11-21 22:20:03,274 INFO [matplotlib.category] Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2025-11-21 22:20:03,744 INFO [app.visualization] Saved chart to reports\revenue_by_room_type_monthly_2025-11-01_2025-11-30_20251121_222003.png
+2025-11-21 22:20:03,763 INFO [app.visualization] Exported data to reports\revenue_by_room_type_monthly_2025-11-01_2025-11-30_20251121_222003.csv
