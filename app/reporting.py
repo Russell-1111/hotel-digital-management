@@ -1,12 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import List, Dict
+from typing import List
 from zoneinfo import ZoneInfo
 
 from .reservations import list_reservations, Reservation
-from .timezone_utils import now_hotel, to_hotel_tz
 
 
 def daily_checkin_list(reservations_path: Path, date_str: str, hotel_tz: ZoneInfo) -> List[Reservation]:

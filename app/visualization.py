@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Literal, Tuple
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)

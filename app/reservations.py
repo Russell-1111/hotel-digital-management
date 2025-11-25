@@ -1,8 +1,7 @@
 from __future__ import annotations
-import re
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 from zoneinfo import ZoneInfo
@@ -390,19 +389,3 @@ def cancel_reservation(reservations_path: Path, reservation_id: str, cfg: Option
         })
     
     return changed
-
-
-def auto_status_transitions(reservations_path: Path, hotel_tz: ZoneInfo, check_in_time: str, check_out_time: str) -> None:
-    """
-    Automatically transition reservation statuses based on hotel local time.
-    
-    Args:
-        reservations_path: Path to reservations database
-        hotel_tz: Hotel's configured timezone
-        check_in_time: Check-in time as "HH:MM" string
-        check_out_time: Check-out time as "HH:MM" string
-    """
-    # Note: This function currently does not persist changes.
-    # Status transitions are handled by the application layer.
-    # Keeping function signature for compatibility.
-    pass
