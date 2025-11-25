@@ -8,7 +8,7 @@ configurable time bucketing (daily, weekly, monthly, quarterly).
 from __future__ import annotations
 import logging
 from pathlib import Path
-from typing import List, Dict, Literal
+from typing import Dict, Literal
 import pandas as pd
 
 from .storage_sqlite import get_connection

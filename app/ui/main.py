@@ -1,10 +1,9 @@
 from __future__ import annotations
 import logging
-import sys
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Dict, Optional
 from zoneinfo import ZoneInfo
 try:
@@ -25,7 +24,6 @@ from app.reservations import (
     cancel_reservation,
     modify_reservation,
     is_room_available,
-    auto_status_transitions,
 )
 from app.timezone_utils import now_hotel, get_hotel_tz
 from app import auth
@@ -1250,16 +1248,9 @@ class App(tk.Tk):
             self.ops_date_entry.configure(foreground='red')
             self.after(2000, lambda: self.ops_date_entry.configure(foreground='black'))
             return
-        # Apply automatic status transitions before showing lists
+        # Use SQLite database
         from ..timezone_utils import get_hotel_tz
         hotel_tz = get_hotel_tz(self.cfg.timezone)
-        auto_status_transitions(
-            self.db_path,
-            hotel_tz,
-            self.cfg.check_in_time,
-            self.cfg.check_out_time,
-        )
-        # Use SQLite database
         ins = daily_checkin_list(self.db_path, date_str, hotel_tz)
         outs = daily_checkout_list(self.db_path, date_str, hotel_tz)
         self.ins_list.delete(0, tk.END)
