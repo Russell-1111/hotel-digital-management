@@ -1110,6 +1110,8 @@ class App(tk.Tk):
 
     def _show_revenue_analytics(self):
         """Show the revenue analytics dialog."""
+        if not self._require_admin("Access Revenue Analytics"):
+            return
         dialog = RevenueAnalyticsDialog(self, self.db_path, self.cfg)
         self.wait_window(dialog)
 
@@ -1803,22 +1805,23 @@ class App(tk.Tk):
         self.grand_total_var = tk.StringVar(value="MYR 0.00")
         ttk.Label(total_frame, textvariable=self.grand_total_var, font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT)
 
-        # Revenue Analytics Section
-        analytics_section = ttk.LabelFrame(self.report_frame, text="Analytics", padding=8)
-        analytics_section.pack(fill=tk.X, padx=8, pady=8)
-        
-        analytics_desc = ttk.Label(
-            analytics_section,
-            text="Generate visual revenue analytics by room type with configurable time periods.",
-            font=("Segoe UI", 9)
-        )
-        analytics_desc.pack(pady=(0, 8))
-        
-        ttk.Button(
-            analytics_section,
-            text="Revenue by Room Type",
-            command=self._show_revenue_analytics
-        ).pack()
+        # Revenue Analytics Section (admin-only)
+        if self.current_user['role'] == 'admin':
+            analytics_section = ttk.LabelFrame(self.report_frame, text="Analytics", padding=8)
+            analytics_section.pack(fill=tk.X, padx=8, pady=8)
+            
+            analytics_desc = ttk.Label(
+                analytics_section,
+                text="Generate visual revenue analytics by room type with configurable time periods.",
+                font=("Segoe UI", 9)
+            )
+            analytics_desc.pack(pady=(0, 8))
+            
+            ttk.Button(
+                analytics_section,
+                text="Revenue by Room Type",
+                command=self._show_revenue_analytics
+            ).pack()
 
         # Initial load
         self.refresh_guest_detail_report()

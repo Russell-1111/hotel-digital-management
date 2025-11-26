@@ -33,7 +33,9 @@ The application uses a tabbed interface for different hotel management functions
 - **Daily Ops**: View today's check-ins and check-outs
 - **Reservations**: Create, modify, and cancel reservations
 - **Availability**: Check room availability for specific date ranges
-- **Reports**: Generate revenue and guest detail reports; includes Analytics section **(Admin only)**
+- **Reports**: Generate revenue and guest detail reports; includes **Analytics section (Admin only)**
+
+**Note**: Staff users will see only the Monthly Revenue Summary and Guest Reservation Details sections in the Reports tab. The Analytics section with "Revenue by Room Type" feature is restricted to administrator accounts.
 
 ---
 
@@ -923,7 +925,9 @@ Grand Total: MYR 3,847.20
 
 ---
 
-### Section 3: Revenue Analytics by Room Type
+### Section 3: Revenue Analytics by Room Type (ADMIN ONLY)
+
+**Access Control**: This feature is restricted to users with administrator privileges. Staff users cannot access revenue analytics.
 
 #### 27. Revenue by Room Type Button
 - **Location**: Analytics section in Reports tab or Analytics menu

@@ -112,14 +112,15 @@ The system supports two user roles:
 
 - **Admin**: Full access to all features including:
   - All reservation operations (create, modify, cancel)
-  - Revenue reporting and export
-  - Password changes
+  - Revenue reporting and analytics
+  - Revenue analytics by room type (visual charts and CSV export)
+  - User password management
   
 - **Staff**: Limited access:
   - View reservations
   - Create and modify reservations
   - Cannot cancel reservations
-  - Cannot access revenue reports
+  - Cannot access revenue reports or analytics
 
 ### Login Process
 
@@ -192,6 +193,30 @@ for user in users:
 4. **Protect the Database**: Restrict access to `data/reservations.db` file
 5. **Secure Backups**: Ensure backup directory has appropriate permissions
 6. **Log Review**: Monitor `logs/app.log` for suspicious authentication attempts
+
+### Access Control Implementation
+
+The system implements **defense-in-depth** access control for sensitive features:
+
+1. **UI Layer Protection**: Admin-only features (e.g., Revenue Analytics) are not rendered in the UI for staff users. The controls are completely removed from the interface, not just hidden.
+
+2. **Callback Authorization Guards**: Even if UI controls were somehow exposed, callback methods verify user role before executing protected operations and display error dialogs for unauthorized access attempts.
+
+3. **Logging**: All unauthorized access attempts are logged with username and action name for security auditing.
+
+This multi-layered approach ensures that staff users cannot access administrative features through the UI or by direct method invocation.
+
+### Access Control Architecture
+
+The system implements **defense-in-depth** for sensitive features:
+
+1. **UI Layer Protection**: Admin-only features (e.g., Revenue Analytics) are not rendered in the UI for staff users. The controls are never created, not just hidden or disabled.
+
+2. **Callback Authorization Guards**: Even if UI controls were somehow exposed, callback methods include fail-safe authorization checks that block unauthorized access.
+
+3. **Audit Logging**: All unauthorized access attempts are logged with username and action name for security monitoring.
+
+This multi-layer approach ensures that sensitive business data remains protected even if one security layer is bypassed.
 
 ### Troubleshooting Authentication
 
